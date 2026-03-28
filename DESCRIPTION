@@ -1,0 +1,10 @@
+Package: dpc5868
+Title: DPC 5868 - Pesquisa Empírica: Instituições e Processos
+Version: 0.0.0.9000
+Authors@R: 
+    person("Ricardo", "Feliz", , "ric.feliz@gmail.com", role = c("aut", "cre"))
+Description: Pacote da matéria de métodos da pós-graduação em Direito na USP.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
