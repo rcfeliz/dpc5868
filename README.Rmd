@@ -37,7 +37,7 @@ O curso continha 4 avaliações: (1) envio de perguntas semanais referentes aos 
 ```{r tbl-estrutura, echo=FALSE}
 tibble::tibble(
   Tipo = c("Seminário", "Trabalho em grupo", "Trabalho final"),
-  `Localização` = c("inst/seminario", "inst/trabalho-grupo", "inst/trabalho-final")
+  `Localização` = c("`inst/seminario`", "`inst/trabalho-grupo`", "`inst/trabalho-final`")
 ) |>
   knitr::kable(caption = "Tabela 2: Localização dos arquivos")
 ```

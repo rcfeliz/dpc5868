@@ -1,0 +1,22 @@
+format:
+  pdf:
+    include-in-header:
+      - text: |
+          \usepackage{mdframed}
+          \usepackage{xcolor}
+          \definecolor{quotebackground}{RGB}{240,240,240}
+          \renewenvironment{quote}{%
+            \begin{mdframed}[
+              backgroundcolor=quotebackground,
+              linewidth=0pt,
+              innerleftmargin=10pt,
+              innerrightmargin=10pt,
+              innertopmargin=8pt,
+              innerbottommargin=8pt,
+              skipabove=8pt,
+              skipbelow=8pt
+            ]
+            \itshape
+          }{%
+            \end{mdframed}
+          }

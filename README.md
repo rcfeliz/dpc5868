@@ -29,10 +29,10 @@ Este pacote reúne as 3 últimas avaliações, que foram escritas em arquivo
 Quarto e necessitaram de código. Todos os códigos podem ser encontrados
 na pasta `\inst`, conforme a Tabela 2.
 
-| Tipo              | Localização         |
-|:------------------|:--------------------|
-| Seminário         | inst/seminario      |
-| Trabalho em grupo | inst/trabalho-grupo |
-| Trabalho final    | inst/trabalho-final |
+| Tipo              | Localização           |
+|:------------------|:----------------------|
+| Seminário         | `inst/seminario`      |
+| Trabalho em grupo | `inst/trabalho-grupo` |
+| Trabalho final    | `inst/trabalho-final` |
 
 Tabela 2: Localização dos arquivos
