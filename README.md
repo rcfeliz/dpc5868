@@ -8,7 +8,15 @@ de pós-graduação em Direito da USP, oferecida pelo Departamento de
 Processo Civil (DPC). Essa disciplina foi ministrada entre 02/03/2026 e
 22/06/2026 pelos docentes da Tabela 1.
 
-<img src="man/figures/README-tbl-docentes-1.png" width="100%" />
+| Docentes                      |
+|:------------------------------|
+| Carlos Alberto de Salles      |
+| Clarisse Frechiani Lara Leite |
+| Fernando Muniz Shecaira       |
+| Maria Tereza Aina Sadek       |
+| Susana Henriques da Costa     |
+
+Tabela 1: Docentes
 
 ## Estrutura
 
@@ -21,4 +29,10 @@ Este pacote reúne as 3 últimas avaliações, que foram escritas em arquivo
 Quarto e necessitaram de código. Todos os códigos podem ser encontrados
 na pasta `\inst`, conforme a Tabela 2.
 
-<img src="man/figures/README-tbl-estrutura-1.png" width="100%" />
+| Tipo              | Localização         |
+|:------------------|:--------------------|
+| Seminário         | inst/seminario      |
+| Trabalho em grupo | inst/trabalho-grupo |
+| Trabalho final    | inst/trabalho-final |
+
+Tabela 2: Localização dos arquivos
