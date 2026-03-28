@@ -1,8 +1,10 @@
 ---
 title: "Interpretando Interações em Modelos Logísticos"
 lang: pt
-mainfont: "DejaVu Sans"
-format: 
+bibliography: referencias.bib
+metadata-files:
+  - _pdf-style.yml
+format:
   pdf:
     documentclass: article
     geometry: margin=1in
@@ -35,23 +37,6 @@ flextable::set_flextable_defaults(
 
 ## Como o artigo interpretou os coeficientes
 
-O estudo original apresentou dois modelos com diferentes especificações, um _naive logistic regression_ e uma _regressão logística com matching_. A @tbl-odds-ratio apresenta os Odds Ratios reportados em ambos:
-
-```{r}
-#| label: tbl-odds-ratios
-#| tbl-cap: "Odds Ratios dos dois modelos analisados"
-
-tibble::tibble(
-  Coeficiente = c("Intercepto", "Union", "Dismiss", "Interação"),
-  `Tabela 4 (Naive)` = c(38.564, 9.412, 2.204, 0.875),
-  `Tabela 7 (Matching)` = c(0.032, 7.319, 1.907, 0.780)
-) |> 
-  flextable::flextable() |>
-  flextable::bold(part = "header") |>
-  flextable::colformat_double(j = c("Tabela 4 (Naive)", "Tabela 7 (Matching)"), digits = 3) |>
-  flextable::autofit()
-```
-
 A autora do estudo original interpretou os resultados focando apenas nos coeficientes das variáveis independentes. Na interpretação dos coeficientes, a autora fez o seguinte:
 
 1. Para o efeito de **Unionized**, a autora analisou os modelos 1 e 4 das Tabelas 4 e 7, que são, respectivamente, os modelos que isolam a variável _Unionized_ e que consideram _Unionized_ e _Dismissed_ sem considerar a interação. 
@@ -72,15 +57,14 @@ Há alguns problemas nessa interpretação.
 
 1. As análises das hipóteses H1 e H2 foram feitas com base em modelos incompletos que não consideravam a interação das variáveis. Veja, considerar o efeito da interação não é algo imprescindível _per se_, mas é algo que surge de uma hipótese teórica. No caso, a autora possui uma justificativa teórica para fazer essa análise e, quando rodada a regressão com o termo de interação, esse termo se mostra significativo. Isso implica que, quando a autora analisa os modelos 1, 2 e 4, ela está obtendo coeficientes com _viés da variável omitida_. A interpretação deveria ser feita com base no modelo 3, para todas as hipóteses. 
 
-2. Mesmo se a autora tivesse considerado o modelo 3, em que ela não teria _viés da variável omitida_ explicitamente, a interpretação dos coeficientes foi feita de forma incorreta, porque a presença de um termo de interação força o pesquisador a interpretar o efeito da variável independente sobre a variável de interesse como efeitos marginais. 
+2. Mesmo se a autora tivesse considerado o modelo 3, em que ela não teria _viés da variável omitida_ explicitamente, a interpretação dos coeficientes foi feita de forma incorreta, porque a presença de um termo de interação força o pesquisador a calcular o efeito marginal de cada coeficiente na variável de interesse, e não tomar o valor de face dos coeficientes como o valor do efeito do coeficiente na variável, conforme explica @brambor2006 e @ai2003
 
-Formalmente, isso significa que dado uma equação de regressão do tipo:
+> The interaction effect, which is often the variable of interest in applied econometrics, cannot be evaluated simply by looking at the sign, magnitude, or statistical significance of the coefficient on the interaction term when the model is nonlinear. Instead, the interaction effect requires computing the cross derivative or cross difference. Like the marginal effect of a single variable, the magnitude of the interaction effect depends on all the covariates in the model. In addition, it can have different signs for different observations, making simple summary measures of the interaction effect difficult. (Ai; Norton, 2003, p. 129)
 
-$$Y = \beta_0+\beta_1X_1+\beta_2X_2+\beta_3X_1X_2+\epsilon$$
+## Resolvendo os problemas
 
-Não podemos, por exemplo, interpretar o efeito de $\beta_1$ sobre $Y$ diretamente, mas devemos calcular o efeito marginal (representado por $\Delta$). Isso exige alguns cálculos intermediários.
+A base de tudo que faremos está em calcular as probabilidades preditas para os quatro casos possíveis da interação entre $X_1$ e $X_2$, que encontramos na @tbl-equacoes:
 
-Primeiro, devemos começar calculando as probabilidades preditas para os quatro casos possíveis da interação entre $X_1$ e $X_2$, que encontramos na @tbl-equacoes:
 
 ```{r}
 #| label: tbl-equacoes
@@ -109,53 +93,81 @@ Onde:
 
 - $Y_4 = \dfrac{\exp(\beta_0 + \beta_1 + \beta_2 + \beta_3)}{1 + \exp(\beta_0 + \beta_1 + \beta_2 + \beta_3)}$
 
+
 A partir dos valores das probabailidades preditas para cada caso, podemos calcular os efeitos marginais:
 
 $$\Delta_1=Y_1-Y_0$$
 $$\Delta_2=Y_2-Y_0$$
-
 $$\Delta_3=Y_3-(Y_0+\Delta_1+\Delta_2)$$
 
-3. O terceiro problema é que, para além de efeito de interação, estamos no contexto de uma regressão não linear. Então para além de termos de calcular o efeito marginal de um coeficiente sobre a variável independente, devemos "corrigir" o valor 
+Vemos que estes cálculos exigem que saibamos os coeficientes $\beta$. O artigo, entretanto, não reportou diretamente os coeficientes $\beta$, mas retornou o _Odds Ratio_ (OR). A escolha do artigo está correta, porque o OR é mais fácil de interpretar do que o coeficiente $\beta$. Entretanto, para calcularmos o efeito marginal, precisamos encontrar o $\beta$. Há uma relação matemática entre os $\beta$ e o OR, expressa da seguinte maneira: 
 
-> The interaction effect, which is often the variable of interest in applied econometrics, cannot be evaluated simply by looking at the sign, magnitude, or statistical significance of the coefficient on the interaction term when the model is nonlinear. Instead, the interaction effect requires computing the cross derivative or cross difference. Like the marginal effect of a single variable, the magnitude of the interaction effect depends on all the covariates in the model. In addition, it can have different signs for different observations, making simple summary measures of the interaction effect difficult. (Ai; Norton, 2003, p. 129)
+$$OR = e^{\beta}$$
+
+Inversamente, se quisermos descobrir o $\beta$ a partir do OR, então fazemos: 
+
+$$\beta = ln(OR)$$
+
+Então para realizarmos tais cálculos precisamos fazer esta primeira conversão. Em resumo, o procedimento que iremos apresentar a seguir é o seguinte: 
+
+1. Converter o OR em $\beta$
+2. Descobrir a probabilidade predita ($Y$) de cada caso
+3. Calcular os efeitos marginais ($\Delta$) de cada coeficiente sobre a variável de interesse 
+
+### ETAPA 00) Os valores originais
+
+O estudo original apresentou o resultado de 4 modelos com 2 especificações distintas, uma especificação com _naive logistic regression_ e uma _regressão logística com matching_. Como vimos, é um equívoco interpretar os resultados dos modelo 1, 2 e 4, porque eles desconsideram o efeito de interação. Então vamos seguir a análise apenas com os resultados do modelo 3 nas duas especificações. A @tbl-odds-ratios apresenta os _Odds Ratios_ do modelo 3 reportados nas duas especificações:
+
+```{r}
+#| label: tbl-odds-ratios
+#| tbl-cap: "Odds Ratios dos dois modelos analisados"
+
+tibble::tibble(
+  `Coeficiente (Odds Ratio)` = c("Intercepto", "Union", "Dismiss", "Interação"),
+  `Tabela 4 (Naive)` = c(38.564, 9.412, 2.204, 0.875),
+  `Tabela 7 (Matching)` = c(0.032, 7.319, 1.907, 0.780)
+) |> 
+  flextable::flextable() |>
+  flextable::bold(part = "header") |>
+  flextable::colformat_double(j = c("Tabela 4 (Naive)", "Tabela 7 (Matching)"), digits = 3) |>
+  flextable::autofit()
+```
+
+### ETAPA 01) Encontrando os Coeficientes $\beta$
+
+```{r}
+#| label: tbl-betas
+#| tbl-cap: "Log Odds Ratios dos dois modelos analisados"
+
+tibble::tibble(
+  `Coeficiente (Beta)` = c("Intercepto", "Union", "Dismiss", "Interação"),
+  `Tabela 4 (Naive)` = c(38.564, 9.412, 2.204, 0.875),
+  `Tabela 7 (Matching)` = c(0.032, 7.319, 1.907, 0.780)
+) |> 
+  dplyr::mutate(dplyr::across(
+    .cols=dplyr::where(is.numeric),
+    .fns=~{log(.x)}
+  )) |> 
+  flextable::flextable() |>
+  flextable::bold(part = "header") |>
+  flextable::colformat_double(j = c("Tabela 4 (Naive)", "Tabela 7 (Matching)"), digits = 3) |>
+  flextable::autofit()
+```
+
+### ETAPA 02) Calculando as probabilidades preditas $Y$
+
+Para calcular as probabilidades preditas a partir dos betas, iremos seguir as equações da @tbl-equacoes, que eram as seguintes:
+
+- $Y_1 = \dfrac{\exp(\beta_0)}{1 + \exp(\beta_0)}$
+
+- $Y_2 = \dfrac{\exp(\beta_0 + \beta_1)}{1 + \exp(\beta_0 + \beta_1)}$ 
+
+- $Y_3 = \dfrac{\exp(\beta_0 + \beta_2)}{1 + \exp(\beta_0 + \beta_2)}$
+
+- $Y_4 = \dfrac{\exp(\beta_0 + \beta_1 + \beta_2 + \beta_3)}{1 + \exp(\beta_0 + \beta_1 + \beta_2 + \beta_3)}$
 
 
-
-## Interpretação Original (Problemática)
-
-A autora do estudo original interpretou os resultados focando apenas nos coeficientes das variáveis de interesse, **ignorando o intercepto**. Essa abordagem é problemática em modelos logísticos porque:
-
-1. **Union (β₁)**: OR > 1 indica que sindicalização aumenta a chance de processo
-2. **Dismiss (β₂)**: OR > 1 indica que demissão aumenta a chance de processo  
-3. **Interação (β₃)**: OR < 1 indica que o efeito conjunto é menor que os efeitos separados
-
-**Problema**: Esta interpretação ignora que os efeitos marginais em modelos logísticos dependem do nível baseline (intercepto) e que a interpretação dos ORs não fornece diretamente os efeitos marginais das variáveis.
-
-## Transformação de Odds Ratios para Probabilidades
-
-Para calcular os efeitos marginais corretos, precisamos transformar os Odds Ratios em probabilidades. Este processo envolve três etapas:
-
-### Etapa 1: OR → Beta (coeficientes)
-
-$$\beta = \ln(OR)$$
-
-### Etapa 2: Beta → Eta (preditor linear) 
-
-Para cada combinação de variáveis:
-
-- $\eta_1 = \beta_0$ (union=0, dismiss=0)
-- $\eta_2 = \beta_0 + \beta_1$ (union=1, dismiss=0)  
-- $\eta_3 = \beta_0 + \beta_2$ (union=0, dismiss=1)
-- $\eta_4 = \beta_0 + \beta_1 + \beta_2 + \beta_3$ (union=1, dismiss=1)
-
-### Etapa 3: Eta → Probabilidade
-
-$$P = \frac{\exp(\eta)}{1 + \exp(\eta)} = \text{plogis}(\eta)$$
-
-## Cálculos Passo a Passo
-
-Vamos demonstrar as transformações para ambos os modelos:
+Os resultados estão resumidos na @tbl-probabilidades:
 
 ```{r}
 # Função para calcular todas as transformações
@@ -167,96 +179,37 @@ calcular_transformacoes <- function(OR_intercept, OR_union, OR_dismiss, OR_inter
   b2 <- log(OR_dismiss)
   b3 <- log(OR_interaction)
   
-  # Etapa 2: Beta → Eta
-  eta_Y1 <- b0
-  eta_Y2 <- b0 + b1
-  eta_Y3 <- b0 + b2
-  eta_Y4 <- b0 + b1 + b2 + b3
+  # Etapa 2: Beta → Probabilidade
+  Y1 <- exp(b0) / (1 + exp(b0))
+  Y2 <- exp(b0+b1) / (1 + exp(b0+b1))
+  Y3 <- exp(b0+b2) / (1 + exp(b0+b2))
+  Y4 <- exp(b0+b1+b2+b3) / (1 + exp(b0+b1+b2+b3))
   
-  # Etapa 3: Eta → Probabilidade
-  Y1 <- plogis(eta_Y1)
-  Y2 <- plogis(eta_Y2)
-  Y3 <- plogis(eta_Y3)
-  Y4 <- plogis(eta_Y4)
-  
-  return(list(
-    betas = tibble::tibble(
-      Coeficiente = c("β₀", "β₁", "β₂", "β₃"),
-      Valor = c(b0, b1, b2, b3),
-      Modelo = nome_modelo
-    ),
-    etas = tibble::tibble(
-      Cenário = c("η₁ (union=0, dismiss=0)", 
-                  "η₂ (union=1, dismiss=0)", 
-                  "η₃ (union=0, dismiss=1)", 
-                  "η₄ (union=1, dismiss=1)"),
-      Valor = c(eta_Y1, eta_Y2, eta_Y3, eta_Y4),
-      Modelo = nome_modelo
-    ),
-    probs = tibble::tibble(
-      Cenário = c("Y₁ (union=0, dismiss=0)", 
-                  "Y₂ (union=1, dismiss=0)", 
-                  "Y₃ (union=0, dismiss=1)", 
-                  "Y₄ (union=1, dismiss=1)"),
-      Probabilidade = c(Y1, Y2, Y3, Y4),
-      Modelo = nome_modelo
-    )
-  ))
+  resultados <- tibble::tibble(
+    Cenário = c("Y₁ (union=0, dismiss=0)", 
+                "Y₂ (union=1, dismiss=0)", 
+                "Y₃ (union=0, dismiss=1)", 
+                "Y₄ (union=1, dismiss=1)"),
+    Probabilidade = c(Y1, Y2, Y3, Y4),
+    Modelo = nome_modelo
+  )
+
+  return(resultados)
 }
-```
 
-### Aplicando as Transformações
-
-Vamos aplicar as transformações para ambos os modelos e mostrar os resultados parciais:
-
-```{r}
 # Calculando para ambos os modelos
 resultado_tab4 <- calcular_transformacoes(38.564, 9.412, 2.204, 0.875, "Tabela 4")
 resultado_tab7 <- calcular_transformacoes(0.032, 7.319, 1.907, 0.780, "Tabela 7")
 
 # Combinando os resultados
-betas_combined <- dplyr::bind_rows(resultado_tab4$betas, resultado_tab7$betas)
-etas_combined <- dplyr::bind_rows(resultado_tab4$etas, resultado_tab7$etas)
-probs_combined <- dplyr::bind_rows(resultado_tab4$probs, resultado_tab7$probs)
+resultados <- dplyr::bind_rows(resultado_tab4, resultado_tab7)
 ```
-
-#### Resultados Parciais
-
-**Etapa 1: Coeficientes Beta (ln dos ORs)**
-
-```{r}
-#| label: tbl-betas
-#| tbl-cap: "Coeficientes beta calculados a partir dos ORs"
-
-betas_combined |>
-  tidyr::pivot_wider(names_from = Modelo, values_from = Valor) |>
-  flextable::flextable() |>
-  flextable::bold(part = "header") |>
-  flextable::colformat_double(j = c("Tabela 4", "Tabela 7"), digits = 4) |>
-  flextable::autofit()
-```
-
-**Etapa 2: Preditores Lineares (Eta)**
-
-```{r}
-#| label: tbl-etas
-#| tbl-cap: "Preditores lineares para cada cenário"
-
-etas_combined |>
-  tidyr::pivot_wider(names_from = Modelo, values_from = Valor) |>
-  flextable::flextable() |>
-  flextable::bold(part = "header") |>
-  flextable::colformat_double(j = c("Tabela 4", "Tabela 7"), digits = 4) |>
-  flextable::autofit()
-```
-
-**Etapa 3: Probabilidades Preditas**
 
 ```{r}
 #| label: tbl-probabilidades
 #| tbl-cap: "Probabilidades preditas de ajuizamento para cada cenário"
 
-probs_combined |>
+resultados |>
   tidyr::pivot_wider(names_from = Modelo, values_from = Probabilidade) |>
   flextable::flextable() |>
   flextable::bold(part = "header") |>
@@ -264,30 +217,24 @@ probs_combined |>
   flextable::autofit()
 ```
 
-Conforme mostrado na @tbl-betas, @tbl-etas e @tbl-probabilidades, as transformações resultam em probabilidades bem diferentes entre os dois modelos, especialmente nos cenários baseline.
-
-## Cálculo dos Efeitos Marginais Corretos
-
-Agora que temos as probabilidades preditas, podemos calcular os **efeitos marginais** corretos usando o método de Ai & Norton:
-
-### Fórmulas dos Efeitos Marginais
+### 03) Cálculo dos efeitos marginais $\Delta$
 
 Os efeitos marginais em modelos logísticos devem ser calculados como:
 
 1. **Efeito da sindicalização para não demitidos**: $\Delta_1 = Y_2 - Y_1$ 
-2. **Efeito da sindicalização para demitidos**: $\Delta_2 = Y_4 - Y_3$
-3. **Efeito de interação**: $\Delta_3 = \Delta_2 - \Delta_1 = (Y_4 - Y_3) - (Y_2 - Y_1)$
+2. **Efeito da sindicalização para demitidos**: $\Delta_2 = Y_3 - Y_1$
+3. **Efeito de interação**: $\Delta_3 = Y_4 - (Y_1 + \Delta_1 + \Delta_2)$
 
 ```{r}
 # Função para calcular deltas
 calcular_deltas <- function(Y1, Y2, Y3, Y4) {
-  delta1 <- Y2 - Y1  # efeito da sindicalização para não demitidos
-  delta2 <- Y4 - Y3  # efeito da sindicalização para demitidos  
-  delta3 <- delta2 - delta1  # efeito de interação (Ai & Norton)
+  delta1 <- Y2 - Y1  # efeito da sindicalização
+  delta2 <- Y3 - Y1  # efeito da demissão  
+  delta3 <- Y4 - (Y1+delta1+delta2)  # efeito de interação 
   
   return(tibble::tibble(
-    Efeito = c("Δ₁ (Union | Not dismissed)", 
-               "Δ₂ (Union | Dismissed)", 
+    Efeito = c("Δ₁ (Union)", 
+               "Δ₂ (Dismissed)", 
                "Δ₃ (Interaction)"),
     Valor = c(delta1, delta2, delta3)
   ))
@@ -295,44 +242,44 @@ calcular_deltas <- function(Y1, Y2, Y3, Y4) {
 
 # Calculando deltas para ambos os modelos
 deltas_tab4 <- calcular_deltas(
-  resultado_tab4$probs$Probabilidade[1], # Y1
-  resultado_tab4$probs$Probabilidade[2], # Y2  
-  resultado_tab4$probs$Probabilidade[3], # Y3
-  resultado_tab4$probs$Probabilidade[4]  # Y4
+  resultado_tab4$Probabilidade[1], # Y1
+  resultado_tab4$Probabilidade[2], # Y2  
+  resultado_tab4$Probabilidade[3], # Y3
+  resultado_tab4$Probabilidade[4]  # Y4
 ) |> dplyr::mutate(Modelo = "Tabela 4")
 
 deltas_tab7 <- calcular_deltas(
-  resultado_tab7$probs$Probabilidade[1], # Y1
-  resultado_tab7$probs$Probabilidade[2], # Y2
-  resultado_tab7$probs$Probabilidade[3], # Y3  
-  resultado_tab7$probs$Probabilidade[4]  # Y4
+  resultado_tab7$Probabilidade[1], # Y1
+  resultado_tab7$Probabilidade[2], # Y2
+  resultado_tab7$Probabilidade[3], # Y3  
+  resultado_tab7$Probabilidade[4]  # Y4
 ) |> dplyr::mutate(Modelo = "Tabela 7")
 
-deltas_combined <- dplyr::bind_rows(deltas_tab4, deltas_tab7)
+deltas <- dplyr::bind_rows(deltas_tab4, deltas_tab7)
 ```
 
 ```{r}
 #| label: tbl-deltas
 #| tbl-cap: "Efeitos marginais corretos para ambos os modelos"
 
-deltas_combined |>
+deltas |>
   tidyr::pivot_wider(names_from = Modelo, values_from = Valor) |>
-  dplyr::mutate(
-    Diferenca = `Tabela 4` - `Tabela 7`
-  ) |>
   flextable::flextable() |>
   flextable::bold(part = "header") |>
-  flextable::colformat_double(j = c("Tabela 4", "Tabela 7", "Diferenca"), digits = 4) |>
-  flextable::set_header_labels(Diferenca = "Diferença") |>
+  flextable::colformat_double(j = c("Tabela 4", "Tabela 7"), digits = 4) |>
   flextable::autofit()
 ```
 
-### Interpretação Final
+## Interpretação Final
 
-A @tbl-deltas mostra os efeitos marginais corretos calculados a partir das probabilidades preditas. Diferentemente da interpretação original (que analisava apenas os ORs), estes resultados mostram:
+A @tbl-deltas mostra os efeitos marginais corretos calculados a partir das probabilidades preditas. Diferentemente da interpretação original baseada em Odds Ratios, os valores de $\Delta$ representam diretamente a **variação em pontos percentuais na probabilidade** de ajuizamento. Vamos comparar a interpretação antiga, com a interpretação atual. No artigo, a autora reportou um _Odds Ratio_ para a sindicalização no modelo 3 da especificação _Naive_ de 9.412. Isso deveria ser interpretado como "Há 9.4 vezes mais ajuizamento de ação entre sindicalizados do que entre não sindicalizados". Essa interpretação está inflada. Na interpretação correta, podemos falar mais diretamente da associação entre a variável Sindicalização e o Ajuizamento, pois podemos falar diretamente em pontos percentuais. Falamos agora que a sindicalização aumenta em `r formattable::percent(deltas_tab4$Valor[1], 2)` pontos percentuais a chance de ajuizamento de uma ação. 
 
-1. **O efeito da sindicalização varia** dependendo do status de demissão
-2. **Os efeitos de interação são negativos** em ambos os modelos, indicando que o efeito da sindicalização é menor para trabalhadores demitidos
-3. **Há diferenças substantivas** entre os dois modelos, demonstrando a importância da especificação do modelo
+Partindo dessa mudança interpretativa, os resultados mostram o seguinte:
 
-**Conclusão**: A interpretação correta de modelos logísticos com interação requer o cálculo de efeitos marginais nas probabilidades preditas, não apenas a análise dos odds ratios isoladamente.
+1. **Distorções no modelo Naive corrigidas no modelo com Matching**. O modelo Naive apresenta distorções sérias pois está com o baseline (intercepto) inflado. Então se autora encontrou, para este modelo, por exemplo, que a sindicalização teria um efeito 9.412 maior no ajuizamento da ação, o mesmo modelo, corrigido, indica que o impacto da sindicalização é baixíssimo, representando um aumento em pontos percentuais de apenas `r formattable::percent(deltas_tab4$Valor[1], 2)`. Vemos que esse valor aumenta bastante quando considermos o modelo com Matching, porque neste caso o baseline ficou corrigido. Assim, encontramos que a sindicalização representa um aumento em pontos percentuais de `r formattable::percent(deltas_tab7$Valor[1], 2)`
+3. **Modelos não compatíveis entre si**. Os modelos de regressão logística naive e a de regressão logística com matching **não correspondem** plenamente, indicando que os resultados não são tão robustos. 
+4. O **efeito da sindicalização** é positivo no ajuizamento, embora com baixa magnitude.
+5. O **efeito da demissão** é positivo no ajuizamento, embora com baixa magnitude.
+6. O **efeito de interação** varia a depender do modelo. No modelo _Naive_, o efeito é negativo; mas no modelo com _Matching_, o efeito é positivo. Este último resultado (que é o resultado mais relevante uma vez que o modelo com _Matching_ não está com um baseline distorcido) contradiz a hipótese H3 da autora, que previa interação negativa — isto é, que o efeito da sindicalização seria menor para trabalhadores demitidos.
+
+## Bibliografia
