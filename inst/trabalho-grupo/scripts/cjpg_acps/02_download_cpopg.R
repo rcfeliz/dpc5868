@@ -1,14 +1,19 @@
 # preparacao -------------------------------------------------------------
 
-path <- here::here("data-raw/html/cpopg")
-path_rds_capa <- here::here("data-raw/rds/capa")
+path           <- here::here("data-raw/html/cpopg")
+path_rds_capa  <- here::here("data-raw/rds/capa")
 path_rds_partes <- here::here("data-raw/rds/partes")
-path_rds_movimentacoes <- here::here("data-raw/rds/movimentacoes")
+path_rds_movs  <- here::here("data-raw/rds/movimentacoes")
+path_csv       <- here::here("data-raw/csv")
 
 fs::dir_create(path)
 fs::dir_create(path_rds_capa)
 fs::dir_create(path_rds_partes)
-fs::dir_create(path_rds_movimentacoes)
+fs::dir_create(path_rds_movs)
+fs::dir_create(path_csv)
+
+repo <- "rcfeliz/dpc5868"
+tag  <- "data"
 
 reautenticar <- function() {
   gmailr::gm_auth("ric.feliz@gmail.com")
@@ -17,11 +22,14 @@ reautenticar <- function() {
 
 reautenticar()
 
-# batches ----------------------------------------------------------------
+# importacao -------------------------------------------------------------
 
-batch_size <- 200
-processos_batches <- dpc5868::cjpg$processo |>
-  JurisMiner::dividir_sequencia(n = batch_size)
+piggyback::pb_download("cjpg.csv", repo = repo, tag = tag, dest = path_csv)
+
+processos_batches <- readr::read_csv(file.path(path_csv, "cjpg.csv")) |>
+  tibble::as_tibble() |>
+  dplyr::pull(processo) |>
+  JurisMiner::dividir_sequencia(n = 200)
 
 n_batches <- length(processos_batches)
 
@@ -35,22 +43,21 @@ baixar_e_parsear <- function(batch) {
 
   da <- tjsp2::esaj_cpopg_ler(
     arquivos = files,
-    formato = "Padronizado",
-    outros = c("Partes", "Movimentacoes")
+    formato  = "Padronizado",
+    outros   = c("Partes", "Movimentacoes")
   )
 
-  capa <- da |>
-    dplyr::select(-partes, -movimentacoes)
-
-  partes <- da |>
-    dplyr::select(processo, cd_processo, partes) |>
-    tidyr::unnest(partes)
-
-  movimentacoes <- da |>
-    dplyr::select(processo, cd_processo, movimentacoes) |>
-    tidyr::unnest(movimentacoes)
-
-  list(capa = capa, partes = partes, movimentacoes = movimentacoes)
+  list(
+    capa = da |> dplyr::select(-partes, -movimentacoes) |> tibble::as_tibble(),
+    partes = da |>
+      dplyr::select(processo, cd_processo, partes) |>
+      tidyr::unnest(partes) |>
+      tibble::as_tibble(),
+    movimentacoes = da |>
+      dplyr::select(processo, cd_processo, movimentacoes) |>
+      tidyr::unnest(movimentacoes) |>
+      tibble::as_tibble()
+  )
 }
 
 # loop com retry e salvamento intermediario ------------------------------
@@ -78,21 +85,9 @@ for (i in seq_along(processos_batches)) {
   )
 
   if (!is.null(resultado)) {
-    readr::write_rds(
-      resultado$capa,
-      file.path(path_rds_capa, paste0("capa_batch", i, ".rds"))
-    )
-    readr::write_rds(
-      resultado$partes,
-      file.path(path_rds_partes, paste0("partes_batch", i, ".rds"))
-    )
-    readr::write_rds(
-      resultado$movimentacoes,
-      file.path(
-        path_rds_movimentacoes,
-        paste0("movimentacoes_batch", i, ".rds")
-      )
-    )
+    readr::write_rds(resultado$capa,          file.path(path_rds_capa,   paste0("capa_batch",  i, ".rds")))
+    readr::write_rds(resultado$partes,        file.path(path_rds_partes, paste0("partes_batch", i, ".rds")))
+    readr::write_rds(resultado$movimentacoes, file.path(path_rds_movs,   paste0("movs_batch",   i, ".rds")))
   }
 }
 
@@ -100,24 +95,18 @@ if (length(batches_com_erro) > 0) {
   message("Batches com falha: ", paste(batches_com_erro, collapse = ", "))
 }
 
-# consolidacao final -----------------------------------------------------
+# consolidacao e upload --------------------------------------------------
 
-# capa <- fs::dir_ls(path_rds_capa, glob = "*.rds") |>
-#   purrr::map(readr::read_rds) |>
-#   dplyr::bind_rows()
+consolidar_e_subir <- function(path_rds, nome) {
+  message("Consolidando e subindo: ", nome)
+  df <- fs::dir_ls(path_rds, glob = "*.rds") |>
+    purrr::map(readr::read_rds) |>
+    dplyr::bind_rows()
+  readr::write_csv(df, file.path(path_csv, paste0(nome, ".csv")))
+  piggyback::pb_upload(file.path(path_csv, paste0(nome, ".csv")), repo = repo, tag = tag)
+  unlink(fs::dir_ls(path_rds, glob = "*.rds"))
+}
 
-# partes <- fs::dir_ls(path_rds_partes, glob = "*.rds") |>
-#   purrr::map(readr::read_rds) |>
-#   dplyr::bind_rows()
-
-# movimentacoes <- fs::dir_ls(path_rds_movimentacoes, glob = "*.rds") |>
-#   purrr::map(readr::read_rds) |>
-#   dplyr::bind_rows()
-
-# usethis::use_data(capa, partes, movimentacoes, overwrite = TRUE)
-
-# limpeza ----------------------------------------------------------------
-
-# unlink(fs::dir_ls(path_rds_capa,          glob = "*.rds"))
-# unlink(fs::dir_ls(path_rds_partes,        glob = "*.rds"))
-# unlink(fs::dir_ls(path_rds_movimentacoes, glob = "*.rds"))
+consolidar_e_subir(path_rds_capa,   "capa")
+consolidar_e_subir(path_rds_partes, "partes")
+consolidar_e_subir(path_rds_movs,   "movimentacoes")

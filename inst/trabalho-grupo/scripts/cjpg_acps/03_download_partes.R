@@ -1,10 +1,15 @@
 # preparacao -------------------------------------------------------------
 
-path <- here::here("data-raw/json/partes/")
-path_rds_partes <- here::here("data-raw/rds/partes_docs")
+path     <- here::here("data-raw/json/partes/")
+path_rds <- here::here("data-raw/rds/partes_docs")
+path_csv <- here::here("data-raw/csv")
 
 fs::dir_create(path)
-fs::dir_create(path_rds_partes)
+fs::dir_create(path_rds)
+fs::dir_create(path_csv)
+
+repo <- "rcfeliz/dpc5868"
+tag  <- "data"
 
 # autenticacao inicial ---------------------------------------------------
 
@@ -15,15 +20,19 @@ reautenticar <- function() {
 
 reautenticar()
 
-# listagem ---------------------------------------------------------------
+# importacao -------------------------------------------------------------
 
-cds <- dpc5868::capa$cd_processo
+piggyback::pb_download("capa.csv", repo = repo, tag = tag, dest = path_csv)
+
+cds <- readr::read_csv(file.path(path_csv, "capa.csv")) |>
+  tibble::as_tibble() |>
+  dplyr::pull(cd_processo)
 
 # batches ----------------------------------------------------------------
 
 batch_size <- 200
-batches <- split(cds, ceiling(seq_along(cds) / batch_size))
-n_batches <- length(batches)
+batches    <- split(cds, ceiling(seq_along(cds) / batch_size))
+n_batches  <- length(batches)
 
 baixar_e_parsear <- function(cds_batch) {
   tjsp::tjsp_baixar_partes_docs(cd_processo = cds_batch, diretorio = path)
@@ -58,10 +67,7 @@ for (i in seq_along(batches)) {
   )
 
   if (!is.null(resultado)) {
-    readr::write_rds(
-      resultado,
-      file.path(path_rds_partes, paste0("partes_batch", i, ".rds"))
-    )
+    readr::write_rds(resultado, file.path(path_rds, paste0("partes_batch", i, ".rds")))
   }
 }
 
@@ -69,14 +75,14 @@ if (length(batches_com_erro) > 0) {
   message("Batches com falha: ", paste(batches_com_erro, collapse = ", "))
 }
 
-# consolidacao final -----------------------------------------------------
+# consolidacao e upload --------------------------------------------------
 
-# partes_full <- fs::dir_ls(path_rds_partes, glob = "*.rds") |>
-#   purrr::map(readr::read_rds) |>
-#   dplyr::bind_rows()
+message("Consolidando e subindo: partes_full")
 
-# usethis::use_data(partes_full, overwrite = TRUE)
+partes_full <- fs::dir_ls(path_rds, glob = "*.rds") |>
+  purrr::map(readr::read_rds) |>
+  dplyr::bind_rows()
 
-# limpeza ----------------------------------------------------------------
-
-# unlink(fs::dir_ls(path_rds_partes, glob = "*.rds"))
+readr::write_csv(partes_full, file.path(path_csv, "partes_full.csv"))
+piggyback::pb_upload(file.path(path_csv, "partes_full.csv"), repo = repo, tag = tag)
+unlink(fs::dir_ls(path_rds, glob = "*.rds"))

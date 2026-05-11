@@ -13,3 +13,8 @@ data-raw/html/
 data-raw/json/
 data-raw/rds/
 data-raw/logs/
+data-raw/csv/
+
+# dataset grande (distribuído via GitHub Releases)
+data/cjpg.rda
+
