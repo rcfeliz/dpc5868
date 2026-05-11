@@ -3,11 +3,14 @@ Title: DPC 5868 - Pesquisa Empírica: Instituições e Processos
 Version: 0.0.0.9000
 Authors@R: 
     person("Ricardo", "Feliz", , "ric.feliz@gmail.com", role = c("aut", "cre"))
-Description: Pacote da matéria de métodos da pós-graduação em Direito na USP.
+Description: Materiais e dados do curso DPC5868 - Pesquisa Empírica: Instituições
+    e Processos, disciplina de pós-graduação em Direito da USP (Departamento de
+    Processo Civil). Reúne datasets de processos judiciais do TJSP e os scripts
+    usados no seminário, no trabalho em grupo e no trabalho final do curso.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
+RoxygenNote: 7.3.2
 URL: https://github.com/rcfeliz/dpc5868
 BugReports: https://github.com/rcfeliz/dpc5868/issues
 Depends: 

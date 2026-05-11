@@ -71,11 +71,11 @@ if (length(batches_com_erro) > 0) {
 
 # consolidacao final -----------------------------------------------------
 
-# partes <- fs::dir_ls(path_rds_partes, glob = "*.rds") |>
+# partes_full <- fs::dir_ls(path_rds_partes, glob = "*.rds") |>
 #   purrr::map(readr::read_rds) |>
 #   dplyr::bind_rows()
 
-# usethis::use_data(partes, overwrite = TRUE)
+# usethis::use_data(partes_full, overwrite = TRUE)
 
 # limpeza ----------------------------------------------------------------
 

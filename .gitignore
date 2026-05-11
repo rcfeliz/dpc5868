@@ -7,3 +7,9 @@
 
 /.quarto/
 **/*.quarto_ipynb
+
+# dados brutos (não versionar)
+data-raw/html/
+data-raw/json/
+data-raw/rds/
+data-raw/logs/

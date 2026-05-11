@@ -3,7 +3,7 @@
 
 # dpc5868
 
-**DPC5856 - Pesquisa Empíric: Instituições e Processos** é uma matéria
+**DPC5868 - Pesquisa Empírica: Instituições e Processos** é uma matéria
 de pós-graduação em Direito da USP, oferecida pelo Departamento de
 Processo Civil (DPC). Essa disciplina foi ministrada entre 02/03/2026 e
 22/06/2026 pelos docentes da Tabela 1.
@@ -36,3 +36,82 @@ na pasta `\inst`, conforme a Tabela 2.
 | Trabalho final    | `inst/trabalho-final` |
 
 Tabela 2: Localização dos arquivos
+
+## Trabalho em grupo
+
+O trabalho em grupo testa empiricamente a tipologia de **Galanter
+(1974)**, buscando responder à pergunta de se litigantes habituais
+possuem vantagem nos litígios.
+
+A tipologia de Galanter distingue dois perfis de litigante:
+
+- **LH — Litigante Habitual** (*repeat player*): atores que litigam com
+  frequência e possuem expertise, recursos e estratégia de longo prazo
+  (ex.: Ministério Público, Estado, grandes empresas).
+- **OS — Litigante Ocasional** (*one-shooter*): atores que recorrem ao
+  Judiciário esporadicamente, sem as vantagens acumuladas pelo litigante
+  habitual (ex.: municípios pequenos, associações locais, sindicatos de
+  base).
+
+### Dados
+
+Os dados foram coletados diretamente do TJSP via pacote
+[`tjsp`](https://github.com/jjesusfilho/tjsp):
+
+1.  **`cjpg`**: resultado da busca por ACPs no CJPG (Consulta de
+    Julgados de Primeira Grau), classe processual 8537 — 55.666
+    registros.
+2.  **`capa`**: informações cadastrais dos processos obtidas via CPOPG.
+3.  **`partes`**: partes de cada processo (autores e réus) obtidas via
+    CPOPG, usadas para classificar os litigantes segundo a tipologia de
+    Galanter.
+4.  **`movimentacoes`**: histórico de movimentações processuais obtido
+    via CPOPG.
+5.  **`partes_full`**: partes dos processos obtidas via endpoint de
+    documentos do ESAJ (rota alternativa ao CPOPG), com estrutura mais
+    detalhada que `partes`. É a base principal usada na classificação
+    LH/OS do script `04_galanter.R`.
+
+### Pipeline
+
+Os scripts em `inst/trabalho-grupo/scripts/cjpg_acps/` seguem a
+sequência:
+
+| Script                 | Descrição                                          |
+|------------------------|----------------------------------------------------|
+| `01_cjpg.R`            | Coleta os julgados via CJPG                        |
+| `02_download_cpopg.R`  | Baixa capa, partes e movimentações via CPOPG       |
+| `03_download_partes.R` | Baixa partes adicionais via endpoint de documentos |
+| `04_galanter.R`        | Classifica litigantes e calcula tipologias LH × OS |
+
+### Hipóteses
+
+A variável dependente é a **vantagem processual do autor** (procedência
+da ação), modelada via regressão logística. A variável independente é a
+**tipologia do litígio**, definida pelo cruzamento do perfil do autor
+com o perfil do réu (LH ou OS), resultando em quatro categorias.
+
+As hipóteses previstas pela teoria de Galanter são expressas na Tabela
+3, onde cada célula indica a probabilidade predita de procedência
+($\hat{y}$):
+
+|            | Autor OS            | Autor LH            |
+|:-----------|:--------------------|:--------------------|
+| **Réu OS** | $\hat{y}_1 = 0{,}5$ | $\hat{y}_3 = 1{,}0$ |
+| **Réu LH** | $\hat{y}_2 = 0{,}5$ | $\hat{y}_4 = 0{,}5$ |
+
+Tabela 3: Hipóteses — probabilidade predita de procedência por tipologia
+do litígio
+
+A lógica das hipóteses é a seguinte:
+
+- **$\hat{y}_1$ — OS × OS**: nenhuma das partes possui vantagem
+  estrutural; espera-se resultado aleatório ($\hat{y}_1 = 0{,}5$).
+- **$\hat{y}_2$ — OS × LH**: o réu é litigante habitual, mas como ele
+  não consegue influenciar na seleção das disputas para litígio, então
+  ele não consegue alterar a probabilidade de procedência
+  ($\hat{y}_2 = 0{,}5$).
+- **$\hat{y}_3$ — LH × OS**: o autor é litigante habitual enfrentando um
+  litigante ocasional; a vantagem é máxima ($\hat{y}_3 = 1{,}0$).
+- **$\hat{y}_4$ — LH × LH**: ambas as partes são litigantes habituais;
+  as vantagens se cancelam ($\hat{y}_4 = 0{,}5$).

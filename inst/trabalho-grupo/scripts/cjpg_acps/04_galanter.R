@@ -1,10 +1,20 @@
 # preparacao -------------------------------------------------------------
 
-load("data/acp_partes")
+load("data/partes_full")
 
 # analise exploratoria ---------------------------------------------------
 
-# lista_partes |>
+# partes_full |>
+#     excluir = dplyr::case_when(
+#       deComptipoparte == "Requerente" & tpPessoafisjur == "F" ~ TRUE,
+#       deComptipoparte == "Requerido" & tpPessoafisjur == "F" ~ TRUE,
+#       TRUE ~ FALSE
+#     )
+#   ) |>
+#   dplyr::filter(
+#     deComptipoparte %in% c("Requerido", "Requerente"),
+#     !excluir
+#   ) |>
 #   dplyr::group_split(deComptipoparte) |>
 #   purrr::pluck(1) |>
 #   dplyr::arrange(cd_processo) |>
@@ -14,7 +24,7 @@ load("data/acp_partes")
 
 # codificação parcial ------------------------------------------------------
 
-cod_parcial <- acp_2020_partes |>
+cod_parcial <- partes_full |>
   dplyr::mutate(
     # esse código está errado. Tem que ser "excluir PROCESSO (e não parte) cuja parte é pessoa física no polo ativo"
     excluir = dplyr::case_when(
