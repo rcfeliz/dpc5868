@@ -6,7 +6,7 @@ fs::dir_create(path)
 # download ---------------------------------------------------------------
 
 tjsp::baixar_cjpg(
-  livre = '"negativação" E ("banco" OU "bancário" OU "financeira")',
+  classe = 65,
   inicio = "01/01/2020",
   fim = "31/12/2020",
   diretorio = path

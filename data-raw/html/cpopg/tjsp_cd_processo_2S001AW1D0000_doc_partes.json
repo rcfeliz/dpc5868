@@ -1,0 +1,1 @@
+{"localizador":null,"excecao":[{"codigoExcecao":null,"objeto":null,"descricaoExcecao":"Não é permitido peticionar intermediária para processos com situação Cancelado. Situações inválidas: Cancelado, Encaminhado a outro tribunal","contexto":[{"value":"https://esaj.tjsp.jus.br/WebHelp/","chave":"1"}]}]}
