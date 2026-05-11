@@ -1,24 +1,22 @@
-gmailr::gm_auth("ric.feliz@gmail.com")
-tjsp::autenticar(email_provider = "gmail")
+# preparacao -------------------------------------------------------------
 
-path <- here::here("data-raw/json/partes/")
-fs::dir_create(path)
+load("data/acp_partes")
 
-load("data/acps_2020.rda")
+# analise exploratoria ---------------------------------------------------
 
-tjsp::tjsp_baixar_partes_docs(acps_2020$cd_processo, diretorio = path)
+# lista_partes |>
+#   dplyr::group_split(deComptipoparte) |>
+#   purrr::pluck(1) |>
+#   dplyr::arrange(cd_processo) |>
+#   dplyr::distinct(nmPessoa) |>
+#   dplyr::arrange(nmPessoa) |>
+#   dplyr::pull(nmPessoa)
 
-files <- fs::dir_ls(path)
+# codificação parcial ------------------------------------------------------
 
-acp_2020_partes <- tjsp::tjsp_ler_cpopg_partes_docs(
-  arquivos = files
-) |>
-  tibble::as_tibble()
-
-usethis::use_data(acp_2020_partes, overwrite = TRUE)
-
-lista_partes <- acp_2020_partes |>
+cod_parcial <- acp_2020_partes |>
   dplyr::mutate(
+    # esse código está errado. Tem que ser "excluir PROCESSO (e não parte) cuja parte é pessoa física no polo ativo"
     excluir = dplyr::case_when(
       deComptipoparte == "Requerente" & tpPessoafisjur == "F" ~ TRUE,
       deComptipoparte == "Requerido" & tpPessoafisjur == "F" ~ TRUE,
@@ -151,10 +149,6 @@ lista_partes |>
   dplyr::filter(tipologia == "OS x LH")
 dplyr::count(tipologia)
 
-# lista_partes |>
-#   dplyr::group_split(deComptipoparte) |>
-#   purrr::pluck(1) |>
-#   dplyr::arrange(cd_processo) |>
-#   dplyr::distinct(nmPessoa) |>
-#   dplyr::arrange(nmPessoa) |>
-#   dplyr::pull(nmPessoa)
+# base a ser codificada ad hoc -------------------------------------------
+
+# codificação final -------------------------------------------------------------
