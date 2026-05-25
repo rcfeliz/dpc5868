@@ -4,7 +4,7 @@ path <- here::here("data-raw/html/cpopg")
 path_rds_capa <- here::here("data-raw/rds/capa")
 path_rds_partes <- here::here("data-raw/rds/partes")
 path_rds_movs <- here::here("data-raw/rds/movimentacoes")
-path_csv <- here::here("data-raw/csv/cjpg_acps")
+path_csv <- here::here("data-raw/csv/cjpg_empresarial")
 
 fs::dir_create(path)
 fs::dir_create(path_rds_capa)
@@ -13,7 +13,7 @@ fs::dir_create(path_rds_movs)
 fs::dir_create(path_csv)
 
 repo <- "rcfeliz/dpc5868"
-tag <- "cjpg_acps"
+tag <- "cjpg_empresarial"
 
 reautenticar <- function() {
   gmailr::gm_auth("ric.feliz@gmail.com")
@@ -28,6 +28,7 @@ piggyback::pb_download("cjpg.csv", repo = repo, tag = tag, dest = path_csv)
 
 processos_batches <- readr::read_csv(file.path(path_csv, "cjpg.csv")) |>
   tibble::as_tibble() |>
+  dplyr::filter(disponibilizacao >= "2023-10-01") |>
   dplyr::distinct(processo) |>
   dplyr::pull(processo) |>
   JurisMiner::dividir_sequencia(n = 200)

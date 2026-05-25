@@ -2,14 +2,14 @@
 
 path <- here::here("data-raw/json/partes/")
 path_rds <- here::here("data-raw/rds/partes_docs")
-path_csv <- here::here("data-raw/csv/cjpg_acps")
+path_csv <- here::here("data-raw/csv/cjpg_empresarial")
 
 fs::dir_create(path)
 fs::dir_create(path_rds)
 fs::dir_create(path_csv)
 
 repo <- "rcfeliz/dpc5868"
-tag <- "cjpg_acps"
+tag <- "cjpg_empresarial"
 
 # autenticacao inicial ---------------------------------------------------
 
