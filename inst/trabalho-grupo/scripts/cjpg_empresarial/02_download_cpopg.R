@@ -112,21 +112,21 @@ if (length(batches_com_erro) > 0) {
 
 # consolidacao e upload --------------------------------------------------
 
-# consolidar_e_subir <- function(path_rds, nome) {
-#   message("Consolidando e subindo: ", nome)
-#   df <- fs::dir_ls(path_rds, glob = "*.rds") |>
-#     purrr::map_dfr(readr::read_rds) |>
-#     dplyr::distinct()
-#   arquivo <- file.path(path_csv, paste0(nome, ".csv"))
-#   readr::write_csv(df, arquivo)
-#   piggyback::pb_upload(
-#     arquivo,
-#     repo = repo,
-#     tag = tag
-#   )
-#   unlink(fs::dir_ls(path_rds, glob = "*.rds"))
-# }
+consolidar_e_subir <- function(path_rds, nome) {
+  message("Consolidando e subindo: ", nome)
+  df <- fs::dir_ls(path_rds, glob = "*.rds") |>
+    purrr::map_dfr(readr::read_rds) |>
+    dplyr::distinct()
+  arquivo <- file.path(path_csv, paste0(nome, ".csv"))
+  readr::write_csv(df, arquivo)
+  piggyback::pb_upload(
+    arquivo,
+    repo = repo,
+    tag = tag
+  )
+  # unlink(fs::dir_ls(path_rds, glob = "*.rds"))
+}
 
-# consolidar_e_subir(path_rds_capa, "capa")
-# consolidar_e_subir(path_rds_partes, "partes")
-# consolidar_e_subir(path_rds_movs, "movimentacoes")
+consolidar_e_subir(path_rds_capa, "capa")
+consolidar_e_subir(path_rds_partes, "partes")
+consolidar_e_subir(path_rds_movs, "movimentacoes")

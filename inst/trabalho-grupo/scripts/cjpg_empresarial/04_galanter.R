@@ -30,141 +30,108 @@ piggyback::pb_download(
 
 # codificação parcial ------------------------------------------------------
 
+tipo_ativo <- c(
+  "Requerente",
+  "Exequente",
+  "Embargante",
+  "Autor",
+  "Apelante"
+)
+
+tipo_passivo <- c(
+  "Requerido",
+  "Executado",
+  "Embargado",
+  "Réu",
+  "Apelado"
+)
+
 cod_parcial <- partes_full |>
+  # 1) Exclui o que tem PF x PF
+  dplyr::filter(deComptipoparte %in% c(tipo_ativo, tipo_passivo)) |>
+  dplyr::group_by(cd_processo) |>
+  dplyr::filter(!all(tpPessoafisjur == "F")) |>
+  dplyr::ungroup() |>
+  # 2) Excluir o que só tem 1 parte dps dos filtros. São casos com herdeiro, por exemplo
+  dplyr::group_by(cd_processo) |>
+  dplyr::mutate(n = dplyr::n()) |>
+  dplyr::filter(n > 1) |>
+  dplyr::ungroup() |>
+  # 3) Codifica
+  dplyr::select(cd_processo, deComptipoparte, nmPessoa) |>
   dplyr::mutate(
-    # esse código está errado. Tem que ser "excluir PROCESSO (e não parte) cuja parte é pessoa física no polo ativo"
-    excluir = dplyr::case_when(
-      deComptipoparte == "Requerente" & tpPessoafisjur == "F" ~ TRUE,
-      deComptipoparte == "Requerido" & tpPessoafisjur == "F" ~ TRUE,
-      TRUE ~ FALSE
-    )
-  ) |>
-  dplyr::filter(
-    deComptipoparte %in% c("Requerido", "Requerente"),
-    !excluir
-  ) |>
-  dplyr::mutate(
-    galanter_ativo = dplyr::case_when(
+    tipo_empresa = dplyr::case_when(
+      stringr::str_detect(nmPessoa, stringr::regex("me$", TRUE)) ~ "ME",
+      stringr::str_detect(nmPessoa, stringr::regex("epp$", TRUE)) ~ "EPP",
       stringr::str_detect(
         nmPessoa,
-        stringr::regex(
-          "minist[ée]rio p[uú]blico|defensoria p[úu]blica|procuradoria|justiça",
-          TRUE
-        )
-      ) ~ "LH",
+        stringr::regex("ltda|ltda?$", TRUE)
+      ) ~ "LTDA",
       stringr::str_detect(
         nmPessoa,
-        stringr::regex("^(munic[ií]pio|prefeitura)", TRUE)
-      ) ~ "OS",
-      stringr::str_detect(
-        nmPessoa,
-        stringr::regex("^(estado|fazenda)", TRUE)
-      ) ~ "LH",
-      stringr::str_detect(nmPessoa, stringr::regex("sind", TRUE)) &
-        stringr::str_detect(
-          nmPessoa,
-          stringr::regex("est|federal", TRUE)
-        ) ~ "LH",
-      stringr::str_detect(nmPessoa, stringr::regex("sind", TRUE)) ~ "OS",
-      stringr::str_detect(
-        nmPessoa,
-        stringr::regex("associa[cç]|centro d. professorado", TRUE)
-      ) &
-        stringr::str_detect(
-          nmPessoa,
-          stringr::regex("est|federal", TRUE)
-        ) ~ "LH",
-      stringr::str_detect(
-        nmPessoa,
-        stringr::regex("associa[cç]|centro d. professorado", TRUE)
-      ) ~ "OS",
-      stringr::str_detect(
-        nmPessoa,
-        stringr::regex(
-          "conselho|união|fundação|instituto|federa[çc][ãa]o",
-          TRUE
-        )
-      ) ~ "LH",
-      stringr::str_detect(
-        nmPessoa,
-        stringr::regex(
-          "acadêmico|comissão discente|uni[aã]o|sociedade de moradores da favela",
-          TRUE
-        )
-      ) ~ "OS"
+        stringr::regex("eirel?li|eir$", TRUE)
+      ) ~ "EIRELI",
+      stringr::str_detect(nmPessoa, stringr::regex("s.? ?a.?$", TRUE)) ~ "SA"
     ),
-    galanter_passivo = dplyr::case_when(
-      stringr::str_detect(
-        nmPessoa,
-        stringr::regex(
-          "minist[ée]rio p[uú]blico|defensoria p[úu]blica|procuradoria|justiça",
-          TRUE
-        )
-      ) ~ "LH",
-      stringr::str_detect(
-        nmPessoa,
-        stringr::regex("^(munic[ií]pio|prefeitura)", TRUE)
-      ) ~ "OS",
-      stringr::str_detect(
-        nmPessoa,
-        stringr::regex("^(estado|fazenda)", TRUE)
-      ) ~ "LH",
-      stringr::str_detect(nmPessoa, stringr::regex("sind", TRUE)) &
-        stringr::str_detect(
-          nmPessoa,
-          stringr::regex("est|federal", TRUE)
-        ) ~ "LH",
-      stringr::str_detect(nmPessoa, stringr::regex("sind", TRUE)) ~ "OS",
-      stringr::str_detect(
-        nmPessoa,
-        stringr::regex("associa[cç]|centro d. professorado", TRUE)
-      ) &
-        stringr::str_detect(
-          nmPessoa,
-          stringr::regex("est|federal", TRUE)
-        ) ~ "LH",
-      stringr::str_detect(
-        nmPessoa,
-        stringr::regex("associa[cç]|centro d. professorado", TRUE)
-      ) ~ "OS",
-      stringr::str_detect(
-        nmPessoa,
-        stringr::regex(
-          "tim celular|oi móvel|claro|embratel|vivo|santander|bradesco|nubank|universidad|nupagamento|caixa econômica|itaú|mercado pago|picpay|google|amil|notre dame|olx",
-          TRUE
-        )
-      ) ~ "LH",
+    galanter = dplyr::case_when(
+      tipo_empresa %in% c("ME", "EPP", "LTDA", "EIRELI") ~ "OS",
+      tipo_empresa %in% c("SA") ~ "LH",
       TRUE ~ "OS"
+    ),
+    galanter_ativo = dplyr::if_else(
+      condition = deComptipoparte %in% tipo_ativo,
+      true = galanter,
+      false = NA_character_
+    ),
+    galanter_passivo = dplyr::if_else(
+      condition = deComptipoparte %in% tipo_passivo,
+      true = galanter,
+      false = NA_character_
     )
-  ) |>
-  dplyr::filter(!is.na(galanter_ativo)) |>
-  # dplyr::filter(deComptipoparte == "Requerido") |>
-  # dplyr::distinct(nmPessoa, galanter_passivo) |>
-  # dplyr::arrange(galanter_passivo)
-  dplyr::distinct(
-    cd_processo,
-    deComptipoparte,
-    nmPessoa,
-    galanter_ativo,
-    galanter_passivo
   )
 
-cod_parcial |>
+
+# codificação final -------------------------------------------------------------
+
+cod_final <- cod_parcial |>
   dplyr::group_by(cd_processo) |>
   dplyr::summarise(
-    galanter_ativo = any(galanter_ativo == "LH"),
-    galanter_passivo = any(galanter_passivo == "LH"),
-    galanter_ativo = dplyr::if_else(galanter_ativo, "LH", "OS"),
-    galanter_passivo = dplyr::if_else(galanter_passivo, "LH", "OS")
+    galanter_ativo = dplyr::case_when(
+      any(galanter_ativo == "LH", na.rm = TRUE) ~ "LH",
+      all(galanter_ativo == "OS", na.rm = TRUE) ~ "OS"
+    ),
+    galanter_passivo = dplyr::case_when(
+      any(galanter_passivo == "LH", na.rm = TRUE) ~ "LH",
+      all(galanter_passivo == "OS", na.rm = TRUE) ~ "OS"
+    )
   ) |>
   dplyr::transmute(
     cd_processo,
     tipologia = glue::glue("{galanter_ativo} x {galanter_passivo}")
   ) |>
-  dplyr::ungroup() |>
+  dplyr::ungroup()
+
+# join --------------------------------------------------------------------
+
+assuntos <- readr::read_csv("data-raw/csv/cjpg_empresarial/capa.csv") |>
+  dplyr::select(processo, cd_processo, classe, assunto) |>
+  dplyr::inner_join(cod_final, by = "cd_processo") |>
+  dplyr::count(assunto, tipologia) |>
+  dplyr::count(assunto) |>
+  dplyr::filter(n == 4) |>
+  dplyr::filter(
+    !stringr::str_detect(
+      assunto,
+      stringr::regex(
+        "credor|falência|recuperação|arbitral|arbitragem|crédito",
+        TRUE
+      )
+    )
+  ) |>
+  dplyr::pull(assunto)
+
+readr::read_csv("data-raw/csv/cjpg_empresarial/capa.csv") |>
+  dplyr::select(processo, cd_processo, classe, assunto) |>
+  dplyr::inner_join(cod_final, by = "cd_processo") |>
+  dplyr::filter(assunto %in% assuntos) |>
   dplyr::count(tipologia)
-dplyr::filter(tipologia == "OS x LH")
-
-# base a ser codificada ad hoc -------------------------------------------
-
-# codificação final -------------------------------------------------------------
