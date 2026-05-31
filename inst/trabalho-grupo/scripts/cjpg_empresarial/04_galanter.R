@@ -1,12 +1,15 @@
 # preparacao -------------------------------------------------------------
 
-path_csv <- here::here("data-raw/csv")
+path_csv <- here::here("data-raw/csv/cjpg_empresarial")
+repo <- "rcfeliz/dpc5868"
+tag <- "cjpg_empresarial"
 piggyback::pb_download(
   "partes_full.csv",
   repo = repo,
   tag = tag,
   dest = path_csv
 )
+partes_full <- readr::read_csv("data-raw/csv/cjpg_empresarial/partes_full.csv")
 
 # analise exploratoria ---------------------------------------------------
 
@@ -71,7 +74,7 @@ cod_parcial <- partes_full |>
         nmPessoa,
         stringr::regex("eirel?li|eir$", TRUE)
       ) ~ "EIRELI",
-      stringr::str_detect(nmPessoa, stringr::regex("s.? ?a.?$", TRUE)) ~ "SA"
+      stringr::str_detect(nmPessoa, stringr::regex(" s.? ?a.?$", TRUE)) ~ "SA"
     ),
     galanter = dplyr::case_when(
       tipo_empresa %in% c("ME", "EPP", "LTDA", "EIRELI") ~ "OS",
@@ -93,7 +96,7 @@ cod_parcial <- partes_full |>
 
 # codificação final -------------------------------------------------------------
 
-cod_final <- cod_parcial |>
+tipologia <- cod_parcial |>
   dplyr::group_by(cd_processo) |>
   dplyr::summarise(
     galanter_ativo = dplyr::case_when(
@@ -103,13 +106,22 @@ cod_final <- cod_parcial |>
     galanter_passivo = dplyr::case_when(
       any(galanter_passivo == "LH", na.rm = TRUE) ~ "LH",
       all(galanter_passivo == "OS", na.rm = TRUE) ~ "OS"
-    )
-  ) |>
-  dplyr::transmute(
-    cd_processo,
+    ),
     tipologia = glue::glue("{galanter_ativo} x {galanter_passivo}")
   ) |>
-  dplyr::ungroup()
+  dplyr::ungroup() |>
+  dplyr::left_join(
+    readr::read_csv("data-raw/csv/cjpg_empresarial/capa.csv") |>
+      dplyr::select(processo, cd_processo),
+    by = "cd_processo"
+  ) |>
+  dplyr::select(
+    processo,
+    cd_processo,
+    tipologia
+  )
+
+usethis::use_data(tipologia, overwrite = TRUE)
 
 # join --------------------------------------------------------------------
 
