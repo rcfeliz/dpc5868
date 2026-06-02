@@ -90,13 +90,21 @@ cod_parcial <- partes_full |>
       condition = deComptipoparte %in% tipo_passivo,
       true = galanter,
       false = NA_character_
-    )
+    ),
+    duvida = tipo_empresa == "LTDA",
+    duvida = tidyr::replace_na(duvida, FALSE)
   )
 
 
 # codificação final -------------------------------------------------------------
 
 tipologia <- cod_parcial |>
+  dplyr::mutate(
+    ltda_ativo = deComptipoparte %in% tipo_ativo & tipo_empresa %in% "LTDA",
+    sa_ativo = deComptipoparte %in% tipo_ativo & tipo_empresa %in% "SA",
+    ltda_passivo = deComptipoparte %in% tipo_passivo & tipo_empresa %in% "LTDA",
+    sa_passivo = deComptipoparte %in% tipo_passivo & tipo_empresa %in% "SA"
+  ) |>
   dplyr::group_by(cd_processo) |>
   dplyr::summarise(
     galanter_ativo = dplyr::case_when(
@@ -107,7 +115,9 @@ tipologia <- cod_parcial |>
       any(galanter_passivo == "LH", na.rm = TRUE) ~ "LH",
       all(galanter_passivo == "OS", na.rm = TRUE) ~ "OS"
     ),
-    tipologia = glue::glue("{galanter_ativo} x {galanter_passivo}")
+    tipologia = glue::glue("{galanter_ativo} x {galanter_passivo}"),
+    duvida = (any(ltda_ativo) & !any(sa_ativo)) |
+      (any(ltda_passivo) & !any(sa_passivo))
   ) |>
   dplyr::ungroup() |>
   dplyr::left_join(
@@ -118,7 +128,8 @@ tipologia <- cod_parcial |>
   dplyr::select(
     processo,
     cd_processo,
-    tipologia
+    tipologia,
+    duvida
   )
 
 usethis::use_data(tipologia, overwrite = TRUE)

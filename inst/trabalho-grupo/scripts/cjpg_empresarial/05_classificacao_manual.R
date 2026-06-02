@@ -24,6 +24,8 @@ tipo_passivo <- c(
 )
 
 grupos <- dpc5868::tipologia |>
+  dplyr::filter(duvida) |>
+  dplyr::select(-duvida) |>
   dplyr::left_join(
     readr::read_csv("data-raw/csv/cjpg_empresarial/partes_full.csv") |>
       dplyr::filter(deComptipoparte %in% c(tipo_ativo, tipo_passivo)) |>
@@ -45,9 +47,8 @@ grupos <- dpc5868::tipologia |>
       ),
     by = "cd_processo"
   ) |>
-  dplyr::group_by(tipologia) |>
-  dplyr::slice_sample(n = 100) |>
-  dplyr::group_split(tipologia)
+  dplyr::slice_sample(n = 400) |>
+  dplyr::group_split(grupo = rep(1:4, each = 100))
 
 sheets_data <- purrr::set_names(grupos, classificadores)
 
@@ -56,17 +57,30 @@ sheets_data <- purrr::set_names(grupos, classificadores)
 googlesheets4::gs4_auth()
 
 purrr::iwalk(sheets_data, \(dados, nome_aba) {
-  googlesheets4::write_sheet(data = dados, ss = ss_id, sheet = nome_aba)
+  googlesheets4::write_sheet(
+    data = dados |>
+      dplyr::transmute(
+        processo,
+        polo_ativo,
+        polo_passivo,
+        tipologia_automatica = tipologia,
+        tipologia_correta = NA_character_
+      ),
+    ss = ss_id,
+    sheet = nome_aba
+  )
 })
 
 # adicionar dropdown em tipologia_correta (coluna E) ----------------------
 
 ss_meta <- googlesheets4::gs4_get(ss_id)
 
+tipologias_validas <- c("OS x OS", "OS x LH", "LH x OS", "LH x LH")
+
 adicionar_dropdown <- function(sheet_title) {
   sheet_id_num <- ss_meta$sheets |>
-    purrr::keep(\(s) s$properties$title == sheet_title) |>
-    purrr::pluck(1, "properties", "sheetId")
+    dplyr::filter(name == sheet_title) |>
+    dplyr::pull(id)
 
   body <- list(
     requests = list(
