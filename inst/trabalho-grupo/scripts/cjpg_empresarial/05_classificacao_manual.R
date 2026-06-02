@@ -3,7 +3,7 @@
 set.seed(42)
 
 ss_id <- "1Q17BohMxjtcVK88xv4npNOCSxZ299xBkanT9iS_NuLE"
-classificadores <- c("andressa", "debora", "feliz", "samile")
+classificadores <- c("andressa", "debora", "feliz", "samille")
 
 # cada classificador recebe 100 processos de uma tipologia ----------------
 
@@ -24,12 +24,30 @@ tipo_passivo <- c(
 )
 
 grupos <- dpc5868::tipologia |>
+  # 1) Tira os assuntos de falência e RJ
+  dplyr::inner_join(
+    readr::read_csv("data-raw/csv/cjpg_empresarial/capa.csv") |>
+      dplyr::filter(
+        !stringr::str_detect(
+          assunto,
+          stringr::regex(
+            "credor|falência|recuperação|crédito",
+            TRUE
+          )
+        )
+      ) |>
+      dplyr::distinct(cd_processo),
+    by = "cd_processo"
+  ) |>
+  # 2) Fica só com os casos em que só há LTDA
   dplyr::filter(duvida) |>
   dplyr::select(-duvida) |>
+  # 3) Cria as colunas de partes
   dplyr::left_join(
     readr::read_csv("data-raw/csv/cjpg_empresarial/partes_full.csv") |>
       dplyr::filter(deComptipoparte %in% c(tipo_ativo, tipo_passivo)) |>
       dplyr::mutate(
+        nmPessoa = glue::glue("{nmPessoa} ({nuCpfcnpj})"),
         polo = dplyr::case_when(
           deComptipoparte %in% tipo_ativo ~ "ativo",
           deComptipoparte %in% tipo_passivo ~ "passivo"
@@ -54,7 +72,7 @@ sheets_data <- purrr::set_names(grupos, classificadores)
 
 # escrever abas no google sheets ------------------------------------------
 
-googlesheets4::gs4_auth()
+googlesheets4::gs4_auth("ric.feliz@gmail.com")
 
 purrr::iwalk(sheets_data, \(dados, nome_aba) {
   googlesheets4::write_sheet(

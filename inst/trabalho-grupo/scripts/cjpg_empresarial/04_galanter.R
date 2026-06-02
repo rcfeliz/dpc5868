@@ -9,6 +9,12 @@ piggyback::pb_download(
   tag = tag,
   dest = path_csv
 )
+piggyback::pb_download(
+  "capa.csv",
+  repo = repo,
+  tag = tag,
+  dest = path_csv
+)
 partes_full <- readr::read_csv("data-raw/csv/cjpg_empresarial/partes_full.csv")
 
 # analise exploratoria ---------------------------------------------------
@@ -90,9 +96,7 @@ cod_parcial <- partes_full |>
       condition = deComptipoparte %in% tipo_passivo,
       true = galanter,
       false = NA_character_
-    ),
-    duvida = tipo_empresa == "LTDA",
-    duvida = tidyr::replace_na(duvida, FALSE)
+    )
   )
 
 
@@ -133,28 +137,3 @@ tipologia <- cod_parcial |>
   )
 
 usethis::use_data(tipologia, overwrite = TRUE)
-
-# join --------------------------------------------------------------------
-
-assuntos <- readr::read_csv("data-raw/csv/cjpg_empresarial/capa.csv") |>
-  dplyr::select(processo, cd_processo, classe, assunto) |>
-  dplyr::inner_join(cod_final, by = "cd_processo") |>
-  dplyr::count(assunto, tipologia) |>
-  dplyr::count(assunto) |>
-  dplyr::filter(n == 4) |>
-  dplyr::filter(
-    !stringr::str_detect(
-      assunto,
-      stringr::regex(
-        "credor|falência|recuperação|arbitral|arbitragem|crédito",
-        TRUE
-      )
-    )
-  ) |>
-  dplyr::pull(assunto)
-
-readr::read_csv("data-raw/csv/cjpg_empresarial/capa.csv") |>
-  dplyr::select(processo, cd_processo, classe, assunto) |>
-  dplyr::inner_join(cod_final, by = "cd_processo") |>
-  dplyr::filter(assunto %in% assuntos) |>
-  dplyr::count(tipologia)

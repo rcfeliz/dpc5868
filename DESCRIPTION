@@ -13,6 +13,22 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 8.0.0
 URL: https://github.com/rcfeliz/dpc5868
 BugReports: https://github.com/rcfeliz/dpc5868/issues
-Depends: 
+Depends:
     R (>= 3.5)
+Imports:
+    base64enc,
+    fs,
+    grid,
+    httr2,
+    jpeg,
+    purrr,
+    rvest,
+    tibble
+Suggests:
+    dplyr,
+    furrr,
+    future,
+    here,
+    readr,
+    rstudioapi
 LazyData: true
