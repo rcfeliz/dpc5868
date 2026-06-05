@@ -1,6 +1,21 @@
-# configuracao ------------------------------------------------------------
+# preparacao -------------------------------------------------------------
 
-set.seed(42)
+path_csv <- here::here("data-raw/csv/cjpg_empresarial")
+fs::dir_create(path_csv)
+repo <- "rcfeliz/dpc5868"
+tag <- "cjpg_empresarial"
+piggyback::pb_download(
+  "partes_full.csv",
+  repo = repo,
+  tag = tag,
+  dest = path_csv
+)
+piggyback::pb_download(
+  "capa.csv",
+  repo = repo,
+  tag = tag,
+  dest = path_csv
+)
 
 ss_id <- "1Q17BohMxjtcVK88xv4npNOCSxZ299xBkanT9iS_NuLE"
 classificadores <- c("andressa", "debora", "feliz", "samille")
@@ -23,6 +38,7 @@ tipo_passivo <- c(
   "Apelado"
 )
 
+set.seed(42)
 grupos <- dpc5868::tipologia |>
   # 1) Tira os assuntos de falência e RJ
   dplyr::inner_join(
@@ -65,8 +81,17 @@ grupos <- dpc5868::tipologia |>
       ),
     by = "cd_processo"
   ) |>
-  dplyr::slice_sample(n = 400) |>
-  dplyr::group_split(grupo = rep(1:4, each = 100))
+  dplyr::transmute(
+    processo,
+    polo_ativo,
+    polo_passivo,
+    tipologia_automatica = tipologia,
+    tipologia_correta = NA_character_
+  ) |>
+  dplyr::group_by(tipologia_automatica) |>
+  dplyr::slice_sample(n = 100) |>
+  dplyr::ungroup() |>
+  dplyr::group_split(tipologia_automatica)
 
 sheets_data <- purrr::set_names(grupos, classificadores)
 
@@ -92,6 +117,7 @@ purrr::iwalk(sheets_data, \(dados, nome_aba) {
 # adicionar dropdown em tipologia_correta (coluna E) ----------------------
 
 ss_meta <- googlesheets4::gs4_get(ss_id)
+opcoes_tipologia <- c("LH x LH", "LH x OS", "OS x LH", "OS x OS")
 
 tipologias_validas <- c("OS x OS", "OS x LH", "LH x OS", "LH x LH")
 
@@ -114,7 +140,7 @@ adicionar_dropdown <- function(sheet_title) {
           rule = list(
             condition = list(
               type = "ONE_OF_LIST",
-              values = purrr::map(tipologias_validas, \(v) {
+              values = purrr::map(opcoes_tipologia, \(v) {
                 list(userEnteredValue = v)
               })
             ),

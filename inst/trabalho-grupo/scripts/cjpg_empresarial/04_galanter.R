@@ -1,6 +1,7 @@
 # preparacao -------------------------------------------------------------
 
 path_csv <- here::here("data-raw/csv/cjpg_empresarial")
+fs::dir_create(path_csv)
 repo <- "rcfeliz/dpc5868"
 tag <- "cjpg_empresarial"
 piggyback::pb_download(
