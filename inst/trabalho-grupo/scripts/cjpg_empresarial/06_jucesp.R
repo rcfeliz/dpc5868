@@ -11,11 +11,21 @@ piggyback::pb_download(
   tag = tag,
   dest = path_csv
 )
-partes_full <- readr::read_csv("data-raw/csv/cjpg_empresarial/partes_full.csv")
+
+ss_id <- "1Q17BohMxjtcVK88xv4npNOCSxZ299xBkanT9iS_NuLE"
+classificadores <- c("feliz")
+
+googlesheets4::gs4_auth("ric.feliz@gmail.com")
 
 # cnpjs -------------------------------------------------------------------
 
-set.seed(42)
+processos_sample <- classificadores |>
+  purrr::map(\(aba) {
+    googlesheets4::read_sheet(ss_id, sheet = aba, col_types = "c")
+  }) |>
+  purrr::list_rbind() |>
+  dplyr::pull(processo) |>
+  unique()
 
 tipo_ativo <- c(
   "Requerente",
@@ -33,34 +43,15 @@ tipo_passivo <- c(
   "Apelado"
 )
 
-cnpjs <- partes_full |>
-  # 1) Exclui partes ligadas a falência e RJ
-  dplyr::inner_join(
+cnpjs <- readr::read_csv("data-raw/csv/cjpg_empresarial/partes_full.csv") |>
+  dplyr::left_join(
     readr::read_csv("data-raw/csv/cjpg_empresarial/capa.csv") |>
-      dplyr::filter(
-        !stringr::str_detect(
-          assunto,
-          stringr::regex(
-            "credor|falência|recuperação|crédito",
-            TRUE
-          )
-        )
-      ) |>
-      dplyr::distinct(cd_processo),
+      dplyr::select(processo, cd_processo),
     by = "cd_processo"
   ) |>
-  # 2) Exclui o que tem PF x PF
+  dplyr::filter(processo %in% processos_sample) |>
   dplyr::filter(deComptipoparte %in% c(tipo_ativo, tipo_passivo)) |>
-  dplyr::group_by(cd_processo) |>
-  dplyr::filter(!all(tpPessoafisjur == "F")) |>
-  dplyr::ungroup() |>
-  # 3) Excluir o que só tem 1 parte dps dos filtros. São casos com herdeiro, por exemplo
-  dplyr::group_by(cd_processo) |>
-  dplyr::mutate(n = dplyr::n()) |>
-  dplyr::filter(n > 1) |>
-  dplyr::ungroup() |>
-  # 4) Codifica
-  dplyr::select(cd_processo, deComptipoparte, nmPessoa, nuCpfcnpj) |>
+  dplyr::select(processo, deComptipoparte, nmPessoa, nuCpfcnpj) |>
   dplyr::mutate(
     tipo_empresa = dplyr::case_when(
       stringr::str_detect(nmPessoa, stringr::regex("me$", TRUE)) ~ "ME",
@@ -74,18 +65,37 @@ cnpjs <- partes_full |>
         stringr::regex("eirel?li|eir$", TRUE)
       ) ~ "EIRELI",
       stringr::str_detect(nmPessoa, stringr::regex(" s.? ?a.?$", TRUE)) ~ "SA"
-    )
+    ),
+    nuCpfcnpj = nuCpfcnpj |>
+      stringr::str_remove_all("[:punct:]")
   ) |>
-  dplyr::filter(tipo_empresa == "LTDA") |>
-  dplyr::filter(!is.na(nuCpfcnpj)) |>
-  dplyr::pull(nuCpfcnpj)
+  dplyr::filter(tipo_empresa == "LTDA", !is.na(nuCpfcnpj)) |>
+  dplyr::distinct(nuCpfcnpj) |>
+  dplyr::anti_join(
+    fs::dir_ls(pasta) |>
+      basename() |>
+      stringr::str_remove_all("\\.html") |>
+      tibble::as_tibble(),
+    by = dplyr::join_by("nuCpfcnpj" == "value")
+  ) |>
+  dplyr::pull(nuCpfcnpj) |>
+  unique()
 
 # teste ------------------------------------------------------------------
 
-jucesp_download(
-  cnpjs[2],
-  pasta = pasta
-)
+for (cnpj in cnpjs) {
+  dpc5868::jucesp_download(cnpj, pasta = pasta)
+
+  arquivos <- fs::dir_ls(pasta, glob = "*.html")
+  if (length(arquivos) > 0) {
+    ultimo <- arquivos[length(arquivos)]
+    dados_teste <- dpc5868::jucesp_parse(ultimo)
+    if (all(is.na(dados_teste$nire) | dados_teste$nire == "")) {
+      cat("IP bloqueado, parando\n")
+      break
+    }
+  }
+}
 
 # download + parse em lotes de 200 ----------------------------------------
 

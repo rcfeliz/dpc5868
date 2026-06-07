@@ -1,41 +1,12 @@
 # preparacao -------------------------------------------------------------
 
-repo <- "rcfeliz/dpc5868"
-tag <- "cjpg_acps"
-path_csv <- here::here("data-raw/csv/cjpg_acps")
-fs::dir_create(path_csv)
-piggyback::pb_download(
-  "partes_full.csv",
-  repo = repo,
-  tag = tag,
-  dest = path_csv
+flextable::set_flextable_defaults(
+  decimal.mark = ",",
+  big.mark = "."
 )
-
-# analise exploratoria ---------------------------------------------------
-
-# partes_full |>
-#     excluir = dplyr::case_when(
-#       deComptipoparte == "Requerente" & tpPessoafisjur == "F" ~ TRUE,
-#       deComptipoparte == "Requerido" & tpPessoafisjur == "F" ~ TRUE,
-#       TRUE ~ FALSE
-#     )
-#   ) |>
-#   dplyr::filter(
-#     deComptipoparte %in% c("Requerido", "Requerente"),
-#     !excluir
-#   ) |>
-#   dplyr::group_split(deComptipoparte) |>
-#   purrr::pluck(1) |>
-#   dplyr::arrange(cd_processo) |>
-#   dplyr::distinct(nmPessoa) |>
-#   dplyr::arrange(nmPessoa) |>
-#   dplyr::pull(nmPessoa)
-
-# codificação parcial ------------------------------------------------------
 
 cod_parcial <- readr::read_csv("data-raw/csv/cjpg_acps/partes_full.csv") |>
   dplyr::mutate(
-    # esse código está errado. Tem que ser "excluir PROCESSO (e não parte) cuja parte é pessoa física no polo ativo"
     excluir = dplyr::case_when(
       deComptipoparte == "Requerente" & tpPessoafisjur == "F" ~ TRUE,
       deComptipoparte == "Requerido" & tpPessoafisjur == "F" ~ TRUE,
@@ -64,29 +35,20 @@ cod_parcial <- readr::read_csv("data-raw/csv/cjpg_acps/partes_full.csv") |>
         stringr::regex("^(estado|fazenda)", TRUE)
       ) ~ "LH",
       stringr::str_detect(nmPessoa, stringr::regex("sind", TRUE)) &
-        stringr::str_detect(
-          nmPessoa,
-          stringr::regex("est|federal", TRUE)
-        ) ~ "LH",
+        stringr::str_detect(nmPessoa, stringr::regex("est|federal", TRUE)) ~ "LH",
       stringr::str_detect(nmPessoa, stringr::regex("sind", TRUE)) ~ "OS",
       stringr::str_detect(
         nmPessoa,
         stringr::regex("associa[cç]|centro d. professorado", TRUE)
       ) &
-        stringr::str_detect(
-          nmPessoa,
-          stringr::regex("est|federal", TRUE)
-        ) ~ "LH",
+        stringr::str_detect(nmPessoa, stringr::regex("est|federal", TRUE)) ~ "LH",
       stringr::str_detect(
         nmPessoa,
         stringr::regex("associa[cç]|centro d. professorado", TRUE)
       ) ~ "OS",
       stringr::str_detect(
         nmPessoa,
-        stringr::regex(
-          "conselho|união|fundação|instituto|federa[çc][ãa]o",
-          TRUE
-        )
+        stringr::regex("conselho|união|fundação|instituto|federa[çc][ãa]o", TRUE)
       ) ~ "LH",
       stringr::str_detect(
         nmPessoa,
@@ -113,19 +75,13 @@ cod_parcial <- readr::read_csv("data-raw/csv/cjpg_acps/partes_full.csv") |>
         stringr::regex("^(estado|fazenda)", TRUE)
       ) ~ "LH",
       stringr::str_detect(nmPessoa, stringr::regex("sind", TRUE)) &
-        stringr::str_detect(
-          nmPessoa,
-          stringr::regex("est|federal", TRUE)
-        ) ~ "LH",
+        stringr::str_detect(nmPessoa, stringr::regex("est|federal", TRUE)) ~ "LH",
       stringr::str_detect(nmPessoa, stringr::regex("sind", TRUE)) ~ "OS",
       stringr::str_detect(
         nmPessoa,
         stringr::regex("associa[cç]|centro d. professorado", TRUE)
       ) &
-        stringr::str_detect(
-          nmPessoa,
-          stringr::regex("est|federal", TRUE)
-        ) ~ "LH",
+        stringr::str_detect(nmPessoa, stringr::regex("est|federal", TRUE)) ~ "LH",
       stringr::str_detect(
         nmPessoa,
         stringr::regex("associa[cç]|centro d. professorado", TRUE)
@@ -141,28 +97,16 @@ cod_parcial <- readr::read_csv("data-raw/csv/cjpg_acps/partes_full.csv") |>
     )
   ) |>
   dplyr::filter(!is.na(galanter_ativo)) |>
-  # dplyr::filter(deComptipoparte == "Requerido") |>
-  # dplyr::distinct(nmPessoa, galanter_passivo) |>
-  # dplyr::arrange(galanter_passivo)
-  dplyr::distinct(
-    cd_processo,
-    deComptipoparte,
-    nmPessoa,
-    galanter_ativo,
-    galanter_passivo
-  )
+  dplyr::distinct(cd_processo, deComptipoparte, nmPessoa, galanter_ativo, galanter_passivo)
 
-flextable::set_flextable_defaults(
-  decimal.mark = ",",
-  big.mark = "."
-)
+# tabela ------------------------------------------------------------------
 
 cod_parcial |>
   dplyr::group_by(cd_processo) |>
   dplyr::summarise(
-    galanter_ativo = any(galanter_ativo == "LH"),
+    galanter_ativo   = any(galanter_ativo == "LH"),
     galanter_passivo = any(galanter_passivo == "LH"),
-    galanter_ativo = dplyr::if_else(galanter_ativo, "LH", "OS"),
+    galanter_ativo   = dplyr::if_else(galanter_ativo, "LH", "OS"),
     galanter_passivo = dplyr::if_else(galanter_passivo, "LH", "OS")
   ) |>
   dplyr::transmute(
@@ -173,12 +117,6 @@ cod_parcial |>
   dplyr::count(tipologia) |>
   janitor::adorn_totals() |>
   flextable::flextable() |>
-  flextable::set_header_labels(
-    values = c("Tipologia", "N")
-  ) |>
+  flextable::set_header_labels(values = c("Tipologia", "N")) |>
   flextable::bold(part = "header") |>
   flextable::hline(4)
-
-# base a ser codificada ad hoc -------------------------------------------
-
-# codificação final -------------------------------------------------------------

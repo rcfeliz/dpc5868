@@ -19,6 +19,6 @@ Busca a empresa pelo CNPJ no site da JUCESP, extrai o NIRE do resultado
 e baixa a ficha cadastral em \verb{Pre_Visualiza.aspx?nire=<NIRE>}, salvando o
 HTML em \verb{pasta/<cnpj_sem_pontuacao>.html}. Se o arquivo já existir, pula.
 Se a busca não retornar resultado, não salva nada.
-Se surgir CAPTCHA, salva a imagem em \verb{data-raw/captcha/} e pede o código
-no console.
+Se surgir CAPTCHA, resolve via GPT (Azure OpenAI). Se GPT falhar, pede
+o código no console.
 }
