@@ -22,18 +22,20 @@ base_resultado <- dpc5868::base_final |>
 dplyr::bind_rows(
   base_extinto |>
     dplyr::count(
-      classe = dplyr::if_else(extinto == 1L, "Extinto", "Não extinto")
+      classe = dplyr::if_else(extinto == 1L, "Sim", "Não")
     ) |>
     dplyr::mutate(
-      base = glue::glue("Extinção\n(N = {scales::comma(sum(n))})"),
+      base = glue::glue(
+        "Extinto\nsem resolução\ndo mérito\n(N = {scales::comma(sum(n))})"
+      ),
       prop = formattable::percent(n / sum(n))
     ),
   base_resultado |>
     dplyr::count(
-      classe = dplyr::if_else(resultado == 1L, "Procedente", "Improcedente")
+      classe = dplyr::if_else(resultado == 1L, "Sim", "Não")
     ) |>
     dplyr::mutate(
-      base = glue::glue("Procedência\n(N = {scales::comma(sum(n))})"),
+      base = glue::glue("Procedente\nno mérito\n(N = {scales::comma(sum(n))})"),
       prop = formattable::percent(n / sum(n))
     )
 ) |>

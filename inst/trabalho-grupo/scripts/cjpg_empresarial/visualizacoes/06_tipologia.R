@@ -32,35 +32,42 @@ dplyr::bind_rows(
   base_extinto |>
     dplyr::count(tipologia) |>
     dplyr::mutate(
-      base = glue::glue("Extinção\n(N = {scales::comma(sum(n))})"),
+      base = glue::glue(
+        "Extinto\nsem resolução\ndo mérito\n(N = {scales::comma(sum(n))})"
+      ),
       prop = formattable::percent(n / sum(n))
     ) |>
     dplyr::select(base, tipologia, n, prop),
   base_resultado |>
     dplyr::count(tipologia) |>
     dplyr::mutate(
-      base = glue::glue("Procedência\n(N = {scales::comma(sum(n))})"),
+      base = glue::glue("Mérito\n(N = {scales::comma(sum(n))})"),
       prop = formattable::percent(n / sum(n))
     ) |>
     dplyr::select(base, tipologia, n, prop)
 ) |>
   dplyr::mutate(
     tipologia = dplyr::case_when(
-      tipologia == "os x os" ~ "OS x OS",
-      tipologia == "os x lh" ~ "OS x LH",
-      tipologia == "lh x os" ~ "LH x OS",
+      tipologia == "le x le" ~ "LE x LE",
+      tipologia == "le x lh" ~ "LE x LH",
+      tipologia == "lh x le" ~ "LH x LE",
       tipologia == "lh x lh" ~ "LH x LH"
     ),
-    tipologia = factor(tipologia, levels = c("OS x OS", "LH x OS", "OS x LH", "LH x LH"))
+    tipologia = factor(
+      tipologia,
+      levels = c("LE x LE", "LH x LE", "LE x LH", "LH x LH")
+    )
   ) |>
   dplyr::arrange(base, tipologia) |>
-  dplyr::mutate(base = dplyr::if_else(!duplicated(base), base, NA_character_)) |>
+  dplyr::mutate(
+    base = dplyr::if_else(!duplicated(base), base, NA_character_)
+  ) |>
   flextable::flextable() |>
   flextable::set_header_labels(
-    base      = "Base",
+    base = "Base",
     tipologia = "Tipologia",
-    n         = "N",
-    prop      = "%"
+    n = "N",
+    prop = "%"
   ) |>
   flextable::bold(part = "header") |>
   flextable::hline(i = 4) |>

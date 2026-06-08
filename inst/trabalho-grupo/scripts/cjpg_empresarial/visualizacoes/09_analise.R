@@ -77,7 +77,7 @@ calcular_probs <- function(modelo, ic_method = c("conservador", "delta")) {
     })
     tibble::tibble(
       analise = NA_character_,
-      passivo = c("OS", "LH"),
+      passivo = c("LE", "LH"),
       ativo_OS = c(
         formatar(prob[1], prob[1] - 1.96 * se[1], prob[1] + 1.96 * se[1]),
         formatar(prob[3], prob[3] - 1.96 * se[3], prob[3] + 1.96 * se[3])
@@ -100,7 +100,7 @@ calcular_probs <- function(modelo, ic_method = c("conservador", "delta")) {
     )
     tibble::tibble(
       analise = NA_character_,
-      passivo = c("OS", "LH"),
+      passivo = c("LE", "LH"),
       ativo_OS = c(
         formatar(prob[1], base_ic[1], base_ic[2]),
         formatar(
@@ -126,7 +126,7 @@ dplyr::bind_rows(
     dplyr::mutate(
       analise = dplyr::if_else(
         dplyr::row_number() == 1,
-        "Extinção",
+        "Taxa de\nextinção\nsem mérito",
         NA_character_
       )
     ),
@@ -134,7 +134,7 @@ dplyr::bind_rows(
     dplyr::mutate(
       analise = dplyr::if_else(
         dplyr::row_number() == 1,
-        "Procedência",
+        "Taxa de\nprocedência",
         NA_character_
       )
     )
@@ -143,7 +143,7 @@ dplyr::bind_rows(
   flextable::set_header_labels(
     analise = "",
     passivo = "Réu",
-    ativo_OS = "OS",
+    ativo_OS = "LE",
     ativo_LH = "LH"
   ) |>
   flextable::add_header_row(
@@ -200,7 +200,7 @@ dplyr::bind_rows(
     dplyr::mutate(
       analise = dplyr::if_else(
         dplyr::row_number() == 1,
-        "Extinção",
+        "Taxa de\nextinção\nsem mérito",
         NA_character_
       )
     ),
@@ -208,7 +208,7 @@ dplyr::bind_rows(
     dplyr::mutate(
       analise = dplyr::if_else(
         dplyr::row_number() == 1,
-        "Procedência",
+        "Taxa de\nprocedência",
         NA_character_
       )
     )
@@ -247,35 +247,48 @@ fazer_grafico <- function(modelo, base) {
     dplyr::filter(!is.na(tipologia)) |>
     dplyr::count(tipologia)
 
-  labels <- c(
-    "LH no polo ativo",
-    "LH no polo passivo",
-    "LH em ambos os polos"
-  ) |>
-    purrr::map_chr(\(e) {
-      n <- ns$n[ns$tipologia == e]
-      paste0(e, " (n=", scales::comma(n), ")")
-    })
+  efeitos <- c("LH no polo ativo", "LH no polo passivo", "LH em ambos os polos")
 
   tibble::tibble(
-    efeito = factor(labels, levels = rev(labels)),
+    efeito = factor(efeitos, levels = rev(efeitos)),
+    n = purrr::map_int(efeitos, \(e) ns$n[ns$tipologia == e]),
     delta = deltas,
     ic_inf = deltas - 1.96 * ses,
     ic_sup = deltas + 1.96 * ses
-  ) |>
-    ggplot2::ggplot(ggplot2::aes(
-      x = delta,
-      y = efeito,
-      xmin = ic_inf,
-      xmax = ic_sup
-    )) +
-    ggplot2::geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
-    ggplot2::geom_pointrange() +
-    ggplot2::scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
-    ggplot2::labs(x = NULL, y = NULL) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(panel.grid.minor = ggplot2::element_blank())
+  )
 }
 
-fazer_grafico(e1, base_extinto)
-fazer_grafico(m1, base_resultado)
+dplyr::bind_rows(
+  fazer_grafico(e1, base_extinto) |>
+    dplyr::mutate(analise = "Taxa de extinção\nsem mérito"),
+  fazer_grafico(m1, base_resultado) |>
+    dplyr::mutate(analise = "Taxa de procedência")
+) |>
+  ggplot2::ggplot(ggplot2::aes(
+    x = delta,
+    y = efeito,
+    xmin = ic_inf,
+    xmax = ic_sup,
+    color = analise,
+    shape = analise
+  )) +
+  ggplot2::geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  ggplot2::geom_pointrange(position = ggplot2::position_dodge(width = 0.4)) +
+  ggplot2::geom_text(
+    ggplot2::aes(x = 0.2, label = paste0("n=", scales::comma(n))),
+    position = ggplot2::position_dodge(width = 0.4),
+    hjust = 1,
+    size = 3,
+    show.legend = FALSE
+  ) +
+  ggplot2::scale_color_manual(values = c("#0072B2", "#E69F00")) +
+  ggplot2::scale_x_continuous(
+    labels = scales::percent_format(accuracy = 1),
+    breaks = seq(-0.3, 0.3, by = 0.1)
+  ) +
+  ggplot2::labs(x = NULL, y = NULL, color = NULL, shape = NULL) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    legend.position = "bottom"
+  )

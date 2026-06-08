@@ -29,26 +29,35 @@ cod_parcial <- readr::read_csv("data-raw/csv/cjpg_acps/partes_full.csv") |>
       stringr::str_detect(
         nmPessoa,
         stringr::regex("^(munic[ií]pio|prefeitura)", TRUE)
-      ) ~ "OS",
+      ) ~ "LE",
       stringr::str_detect(
         nmPessoa,
         stringr::regex("^(estado|fazenda)", TRUE)
       ) ~ "LH",
       stringr::str_detect(nmPessoa, stringr::regex("sind", TRUE)) &
-        stringr::str_detect(nmPessoa, stringr::regex("est|federal", TRUE)) ~ "LH",
-      stringr::str_detect(nmPessoa, stringr::regex("sind", TRUE)) ~ "OS",
+        stringr::str_detect(
+          nmPessoa,
+          stringr::regex("est|federal", TRUE)
+        ) ~ "LH",
+      stringr::str_detect(nmPessoa, stringr::regex("sind", TRUE)) ~ "LE",
       stringr::str_detect(
         nmPessoa,
         stringr::regex("associa[cç]|centro d. professorado", TRUE)
       ) &
-        stringr::str_detect(nmPessoa, stringr::regex("est|federal", TRUE)) ~ "LH",
+        stringr::str_detect(
+          nmPessoa,
+          stringr::regex("est|federal", TRUE)
+        ) ~ "LH",
       stringr::str_detect(
         nmPessoa,
         stringr::regex("associa[cç]|centro d. professorado", TRUE)
-      ) ~ "OS",
+      ) ~ "LE",
       stringr::str_detect(
         nmPessoa,
-        stringr::regex("conselho|união|fundação|instituto|federa[çc][ãa]o", TRUE)
+        stringr::regex(
+          "conselho|união|fundação|instituto|federa[çc][ãa]o",
+          TRUE
+        )
       ) ~ "LH",
       stringr::str_detect(
         nmPessoa,
@@ -56,7 +65,7 @@ cod_parcial <- readr::read_csv("data-raw/csv/cjpg_acps/partes_full.csv") |>
           "acadêmico|comissão discente|uni[aã]o|sociedade de moradores da favela",
           TRUE
         )
-      ) ~ "OS"
+      ) ~ "LE"
     ),
     galanter_passivo = dplyr::case_when(
       stringr::str_detect(
@@ -75,13 +84,19 @@ cod_parcial <- readr::read_csv("data-raw/csv/cjpg_acps/partes_full.csv") |>
         stringr::regex("^(estado|fazenda)", TRUE)
       ) ~ "LH",
       stringr::str_detect(nmPessoa, stringr::regex("sind", TRUE)) &
-        stringr::str_detect(nmPessoa, stringr::regex("est|federal", TRUE)) ~ "LH",
+        stringr::str_detect(
+          nmPessoa,
+          stringr::regex("est|federal", TRUE)
+        ) ~ "LH",
       stringr::str_detect(nmPessoa, stringr::regex("sind", TRUE)) ~ "OS",
       stringr::str_detect(
         nmPessoa,
         stringr::regex("associa[cç]|centro d. professorado", TRUE)
       ) &
-        stringr::str_detect(nmPessoa, stringr::regex("est|federal", TRUE)) ~ "LH",
+        stringr::str_detect(
+          nmPessoa,
+          stringr::regex("est|federal", TRUE)
+        ) ~ "LH",
       stringr::str_detect(
         nmPessoa,
         stringr::regex("associa[cç]|centro d. professorado", TRUE)
@@ -97,17 +112,23 @@ cod_parcial <- readr::read_csv("data-raw/csv/cjpg_acps/partes_full.csv") |>
     )
   ) |>
   dplyr::filter(!is.na(galanter_ativo)) |>
-  dplyr::distinct(cd_processo, deComptipoparte, nmPessoa, galanter_ativo, galanter_passivo)
+  dplyr::distinct(
+    cd_processo,
+    deComptipoparte,
+    nmPessoa,
+    galanter_ativo,
+    galanter_passivo
+  )
 
 # tabela ------------------------------------------------------------------
 
 cod_parcial |>
   dplyr::group_by(cd_processo) |>
   dplyr::summarise(
-    galanter_ativo   = any(galanter_ativo == "LH"),
+    galanter_ativo = any(galanter_ativo == "LH"),
     galanter_passivo = any(galanter_passivo == "LH"),
-    galanter_ativo   = dplyr::if_else(galanter_ativo, "LH", "OS"),
-    galanter_passivo = dplyr::if_else(galanter_passivo, "LH", "OS")
+    galanter_ativo = dplyr::if_else(galanter_ativo, "LH", "LE"),
+    galanter_passivo = dplyr::if_else(galanter_passivo, "LH", "LE")
   ) |>
   dplyr::transmute(
     cd_processo,

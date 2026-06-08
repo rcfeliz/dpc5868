@@ -100,6 +100,45 @@ base_final <- aux_tipologia |>
       dplyr::select(processo, foro, vara, juiz),
     by = "processo"
   ) |>
-  dplyr::filter(!is.na(resultado))
+  dplyr::filter(!is.na(resultado)) |>
+  dplyr::mutate(
+    tipologia = stringr::str_replace_all(tipologia, "\\bOS\\b", "LE")
+  )
 
 usethis::use_data(base_final, overwrite = TRUE)
+
+
+# full -------------------------------------------------------------------
+
+aux_tipologia_full <- dpc5868::tipologia |>
+  dplyr::select(processo, tipologia)
+
+processos_alvo_full <- aux_tipologia_full$processo
+
+aux_resultado_full <- readr::read_csv(
+  fs::path(path_csv, "movimentacoes.csv"),
+  col_types = readr::cols(
+    processo = readr::col_character(),
+    .default = readr::col_guess()
+  )
+) |>
+  dplyr::filter(processo %in% processos_alvo_full) |>
+  projetos::extract_sentenca() |>
+  dplyr::select(processo, resultado)
+
+base_final_full <- aux_tipologia_full |>
+  dplyr::left_join(
+    aux_resultado_full,
+    by = "processo"
+  ) |>
+  dplyr::left_join(
+    readr::read_csv(fs::path(path_csv, "capa.csv")) |>
+      dplyr::select(processo, foro, vara, juiz),
+    by = "processo"
+  ) |>
+  dplyr::filter(!is.na(resultado)) |>
+  dplyr::mutate(
+    tipologia = stringr::str_replace_all(tipologia, "\\bOS\\b", "LE")
+  )
+
+usethis::use_data(base_final_full, overwrite = TRUE)
