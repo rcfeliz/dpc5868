@@ -1,0 +1,296 @@
+---
+title: "Seletividade de Risco nos Planos de Saúde"
+subtitle: "Uma análise forense da rescisão unilateral de contratos pela Amil após o Tema 1082 do STJ"
+lang: pt
+format:
+  pdf:
+    documentclass: article
+    geometry: margin=1in
+    include-in-header:
+      - text: |
+          \usepackage{booktabs}
+          \usepackage{longtable}
+          \usepackage{float}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, fig.pos = "H")
+
+flextable::set_flextable_defaults(
+  digits = 2,
+  big.mark = ".",
+  decimal.mark = ","
+)
+
+DATA_MUDANCA <- as.Date("2024-05-03")
+load(here::here("data/da_did.rda"))
+```
+
+```{r prepara-dados}
+da_contagem <- da_did |>
+  dplyr::filter(format(dt_dist, "%Y") == "2024") |>
+  dplyr::mutate(post = dt_dist >= DATA_MUDANCA) |>
+  dplyr::count(dt_dist, autista, post) |>
+  tidyr::complete(
+    dt_dist = seq(min(dt_dist), max(dt_dist), by = "day"),
+    autista = c(FALSE, TRUE),
+    fill = list(n = 0L)
+  ) |>
+  dplyr::mutate(
+    post = dt_dist >= DATA_MUDANCA,
+    dia_util = !weekdays(dt_dist) %in% c("Saturday", "Sunday", "sábado", "domingo")
+  ) |>
+  dplyr::filter(dia_util)
+```
+
+## Introdução
+
+O setor de saúde suplementar é caracterizado por um conflito de princípios entre ___  e____. 
+
+Esses princípios sempre foram aplicados na escolha de com quem conratar. 
+
+O **Tema 1082 do STJ** estabeleceu as condições de validade para a rescisão
+unilateral de planos de saúde coletivos pelas operadoras. A partir de uma decisão
+intermediária nesse tema — cujo efeito sobre o volume de ações judiciais é
+detectável empiricamente a partir de **03 de maio de 2024** —, a Amil passou a
+rescindir em massa contratos de planos de saúde coletivos.
+
+Este trabalho investiga se essa onda de rescisões constitui **seletividade de
+risco**: a prática de rescindir preferencialmente contratos de beneficiários com
+maior custo esperado de assistência, neste caso, beneficiários com Transtorno do
+Espectro Autista (TEA). Trata-se de uma análise forense, cujo objetivo é
+identificar, nos dados disponíveis, um padrão estatístico que seja consistente com
+discriminação sistemática por condição de saúde.
+
+## Pergunta de Pesquisa
+
+A hipótese central pode ser formulada formalmente como:
+
+$$P(\text{rescindiu} \mid \text{autista}) > P(\text{autista})$$
+
+Isto é: a probabilidade de ter o contrato rescindido, dado que o beneficiário é
+autista, é maior do que a proporção de autistas na carteira da operadora? Se sim,
+a operadora está eliminando da carteira os beneficiários com maior custo
+esperado — o que configura seletividade de risco.
+
+## Metodologia
+
+### O problema de observação parcial
+
+A base ideal para responder a essa pergunta teria uma linha por contrato ativo,
+com as variáveis: identidade do beneficiário, condição de autismo, data de início
+e fim do contrato, indicador de rescisão unilateral pós-Tema 1082, e indicador de
+judicialização. Com esses dados, bastaria estimar $P(\text{rescindiu} \mid
+\text{autista})$ diretamente.
+
+Entretanto, os dados disponíveis correspondem apenas ao subconjunto em que o
+beneficiário ajuizou ação judicial — i.e., `judicializou = TRUE`. O que se
+consegue medir, portanto, é:
+
+$$P(\text{rescindiu} \mid \text{autista}, \text{judicializou})$$
+
+Isso introduz um viés de seleção. Autistas são uma população politicamente
+organizada, com maior propensão a buscar o Judiciário diante de uma rescisão:
+
+$$P(\text{judicializou} \mid \text{autista}, \text{rescindiu}) > P(\text{judicializou} \mid \text{não-autista}, \text{rescindiu})$$
+
+Portanto, os processos observados superrepresentam autistas entre os rescindidos.
+Uma comparação direta inflaria a estimativa de seletividade.
+
+### Estratégia de identificação: Diferenças em Diferenças
+
+A maior propensão de autistas a judicializar é um **efeito fixo de grupo**: existe
+independentemente do período analisado. Isso abre espaço para uma estratégia de
+**diferenças em diferenças (DiD)**, que usa a variação temporal para eliminar esse
+efeito.
+
+A intuição é a seguinte: antes da decisão do STJ, tanto autistas quanto
+não-autistas ajuizavam ações por rescisões "normais". O nível de autistas era
+sistematicamente mais alto, mas as trajetórias eram paralelas. Se, após o Tema
+1082, a Amil passou a rescindir preferencialmente contratos de autistas, então os
+autistas deveriam apresentar um **aumento adicional** nas ações, acima do que
+seria esperado pela tendência comum.
+
+O estimador DiD é construído como:
+
+$$\hat{\delta} = \left(\bar{y}_{\text{autista, depois}} - \bar{y}_{\text{autista, antes}}\right) - \left(\bar{y}_{\text{não-autista, depois}} - \bar{y}_{\text{não-autista, antes}}\right)$$
+
+Onde $\bar{y}$ é a média diária de novos processos. O valor $\hat{\delta} > 0$
+indica que autistas tiveram um aumento **diferencial** nas ações após o evento,
+consistente com seletividade de risco. A hipótese de identificação é a de
+**tendências paralelas**: na ausência de seletividade, autistas e não-autistas
+teriam a mesma taxa de crescimento nas ações após 03/05/2024.
+
+### Especificação econométrica
+
+A unidade de análise é o dia-grupo. O modelo estimado é uma regressão de Poisson:
+
+$$\log(\mu_{it}) = \alpha + \beta_1 \cdot \text{autista}_i + \beta_2 \cdot \text{post}_t + \delta \cdot (\text{autista}_i \times \text{post}_t)$$
+
+Onde $\mu_{it}$ é o número esperado de novos processos para o grupo $i$ no dia
+$t$. O parâmetro de interesse é $\delta$: o coeficiente da interação, que
+representa o efeito diferencial sobre autistas após o ponto de mudança.
+
+### Dados
+
+A base utilizada (`da_did`) contém `r nrow(da_did)` processos ajuizados contra
+a Amil no TJSP, entre fev/2023 e mai/2024, relacionados à rescisão unilateral de
+planos de saúde coletivos. Desse total, `r sum(da_did$autista)` (`r scales::percent(mean(da_did$autista), accuracy = 0.1)`) envolvem beneficiários autistas.
+A análise DiD é restrita ao ano de 2024, com o ponto de corte em **03/05/2024**,
+data identificada como ponto de mudança estrutural na série temporal de processos
+(@fig-serie).
+
+```{r fig-serie, fig.cap="Ações contra a Amil por rescisão unilateral de planos de saúde. A linha tracejada indica o ponto de mudança detectado (03/05/2024).", fig.width=7, fig.height=3.5}
+da_contagem |>
+  dplyr::mutate(grupo = dplyr::if_else(autista, "Autista", "Não-autista")) |>
+  ggplot2::ggplot(ggplot2::aes(x = dt_dist, y = n, color = grupo)) +
+  ggplot2::geom_line(alpha = 0.5, linewidth = 0.4) +
+  ggplot2::geom_smooth(method = "lm", se = TRUE, linewidth = 0.8) +
+  ggplot2::geom_vline(xintercept = DATA_MUDANCA, linetype = "dashed", color = "black") +
+  ggplot2::facet_wrap(~grupo, scales = "free_y") +
+  ggplot2::scale_color_manual(values = c("Autista" = "#E05A2B", "Não-autista" = "#2B6BE0")) +
+  ggplot2::labs(x = "Data de ajuizamento", y = "Processos novos por dia útil") +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(legend.position = "none")
+```
+
+## Resultados
+
+### Estatísticas descritivas
+
+```{r tbl-desc}
+#| label: tbl-desc
+#| tbl-cap: "Média diária de novos processos por grupo e período (dias úteis)"
+
+da_contagem |>
+  dplyr::group_by(post, autista) |>
+  dplyr::summarise(
+    n_dias = dplyr::n(),
+    total = sum(n),
+    media_dia = mean(n),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(
+    Período = dplyr::if_else(post, "Após 03/05/2024", "Antes de 03/05/2024"),
+    Grupo = dplyr::if_else(autista, "Autista", "Não-autista")
+  ) |>
+  dplyr::select(Período, Grupo, `Dias úteis` = n_dias, `Total de processos` = total, `Média por dia` = media_dia) |>
+  flextable::flextable() |>
+  flextable::bold(part = "header") |>
+  flextable::colformat_double(j = "Média por dia", digits = 2) |>
+  flextable::colformat_int(j = c("Dias úteis", "Total de processos")) |>
+  flextable::autofit()
+```
+
+A @tbl-desc mostra os dados agregados. Para não-autistas, a média diária saltou de
+`r round(mean(da_contagem$n[!da_contagem$autista & !da_contagem$post]), 1)` para
+`r round(mean(da_contagem$n[!da_contagem$autista & da_contagem$post]), 1)`
+processos/dia — um aumento de
+`r round(mean(da_contagem$n[!da_contagem$autista & da_contagem$post]) / mean(da_contagem$n[!da_contagem$autista & !da_contagem$post]), 1)`x.
+Para autistas, o salto foi de
+`r round(mean(da_contagem$n[da_contagem$autista & !da_contagem$post]), 1)` para
+`r round(mean(da_contagem$n[da_contagem$autista & da_contagem$post]), 1)`
+processos/dia —
+`r round(mean(da_contagem$n[da_contagem$autista & da_contagem$post]) / mean(da_contagem$n[da_contagem$autista & !da_contagem$post]), 1)`x.
+
+### Estimativa DiD
+
+```{r tbl-did}
+#| label: tbl-did
+#| tbl-cap: "Estimativa DiD: diferença entre grupos no aumento pós-03/05/2024"
+
+medias <- da_contagem |>
+  dplyr::group_by(post, autista) |>
+  dplyr::summarise(media = mean(n), .groups = "drop")
+
+media <- function(aut, pos) medias$media[medias$autista == aut & medias$post == pos]
+
+diff_ctrl <- media(FALSE, TRUE) - media(FALSE, FALSE)
+diff_trt  <- media(TRUE, TRUE)  - media(TRUE, FALSE)
+did_est   <- diff_trt - diff_ctrl
+
+tibble::tibble(
+  Grupo = c("Não-autista (controle)", "Autista (tratamento)", "**DiD**"),
+  `Antes` = c(media(FALSE, FALSE), media(TRUE, FALSE), NA_real_),
+  `Depois` = c(media(FALSE, TRUE), media(TRUE, TRUE), NA_real_),
+  `Diferença` = c(diff_ctrl, diff_trt, did_est)
+) |>
+  flextable::flextable() |>
+  flextable::bold(part = "header") |>
+  flextable::bold(i = 3) |>
+  flextable::colformat_double(digits = 2) |>
+  flextable::autofit()
+```
+
+```{r did-model}
+modelo <- glm(n ~ autista * post, data = da_contagem, family = poisson(link = "log"))
+coefs <- summary(modelo)$coefficients
+delta_log <- coefs["autistaTRUE:postTRUE", "Estimate"]
+se_log    <- coefs["autistaTRUE:postTRUE", "Std. Error"]
+z_val     <- coefs["autistaTRUE:postTRUE", "z value"]
+p_val     <- coefs["autistaTRUE:postTRUE", "Pr(>|z|)"]
+```
+
+O gráfico de DiD (@fig-did) ilustra as trajetórias dos dois grupos. A inclinação
+divergente após o ponto de mudança é a assinatura visual da seletividade.
+
+```{r fig-did, fig.cap="Gráfico de Diferenças em Diferenças. Cada ponto é a média diária de processos por grupo e período.", fig.width=5, fig.height=3.5}
+medias |>
+  dplyr::mutate(
+    grupo = dplyr::if_else(autista, "Autista", "Não-autista"),
+    periodo = dplyr::if_else(post, "Após\n03/05/2024", "Antes de\n03/05/2024"),
+    periodo = factor(periodo, levels = c("Antes de\n03/05/2024", "Após\n03/05/2024"))
+  ) |>
+  ggplot2::ggplot(ggplot2::aes(x = periodo, y = media, group = grupo, color = grupo)) +
+  ggplot2::geom_line(linewidth = 1.2) +
+  ggplot2::geom_point(size = 3) +
+  ggplot2::scale_color_manual(values = c("Autista" = "#E05A2B", "Não-autista" = "#2B6BE0")) +
+  ggplot2::labs(
+    x = NULL,
+    y = "Média de processos por dia útil",
+    color = "Grupo"
+  ) +
+  ggplot2::theme_minimal(base_size = 10) +
+  ggplot2::theme(legend.position = "bottom")
+```
+
+A @tbl-did reporta a estimativa DiD: **`r round(did_est, 1)` processos/dia
+adicionais** para autistas após 03/05/2024, acima do que seria esperado com base
+na tendência do grupo controle. No modelo de Poisson, o coeficiente da interação
+é $\hat{\delta} = `r round(delta_log, 3)`$ (EP = `r round(se_log, 3)`, z =
+`r round(z_val, 2)`, p `r ifelse(p_val < 0.001, "< 0,001", paste("=", round(p_val, 3)))`),
+o que implica que os autistas experimentaram um aumento
+**`r round(exp(delta_log), 1)`x maior** nas ações do que o grupo controle após o
+ponto de mudança.
+
+## Discussão
+
+A estratégia DiD permite a seguinte interpretação causal condicionada: o aumento
+diferencial nas ações de autistas após 03/05/2024 não pode ser explicado (i) pela
+maior propensão de autistas a judicializar — pois esse efeito é constante e
+cancelado pela diferença entre grupos — nem (ii) pela tendência geral de aumento
+nas rescisões — pois essa tendência afeta ambos os grupos e é cancelada pela
+diferença entre períodos. O que resta — o estimador DiD — é consistente com a
+hipótese de que a Amil rescindiu contratos de autistas de forma desproporcional
+após o Tema 1082 do STJ.
+
+A hipótese de tendências paralelas é plausível porque o viés de seleção (autistas
+judicializando mais) é estrutural — decorre de organização política e redes de
+apoio — e não deve variar abruptamente em resposta a uma mudança regulatória. A
+mudança abrupta observada nos dados, portanto, é atribuída à política de rescisão
+seletiva da operadora.
+
+## Conclusão
+
+Os resultados são consistentes com a hipótese de **seletividade de risco** da Amil
+contra beneficiários autistas na esteira do Tema 1082 do STJ. O estimador DiD
+indica um aumento diferencial de aproximadamente `r round(did_est, 0)` processos
+por dia útil para autistas após 03/05/2024 — estatisticamente significativo e de
+magnitude relevante. Em termos relativos, o aumento nas ações de autistas foi
+`r round(exp(delta_log), 1)`x superior ao observado para não-autistas no mesmo
+período.
+
+Esta evidência, de natureza forense, não prova individualmente nenhum caso de
+discriminação, mas demonstra um padrão coletivo que é compatível com a prática
+de seleção adversa por condição de saúde — vedada pelo marco regulatório dos
+planos de saúde no Brasil.
