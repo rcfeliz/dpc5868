@@ -81,7 +81,7 @@ da_carteira |>
 
 Partindo dessa base, a seletividade de riscos seria definida como se a proporção de contratos rescindidos de autistas fosse maior do que a proporção de contratos com autistas na carteira geral, ou seja, haveria seletividade de riscos contra autistas se: 
 
-$$P(\text{autista} \mid \text{rescindiu} = \text{Sim}) > P(\text{autista})$$ {#eq-seletividade}
+$$P(\text{autista} \mid \text{rescindiu} = \text{Sim}) - P(\text{autista}) > 0$$ {#eq-seletividade}
 
 O problema é que não temos acesso a uma tal base. No lugar, devemos imaginar que a carteira de processos possui uma informação extra: se o contrato foi judicializado ou não, expressa com @tbl-carteira-extensao.  
 
@@ -124,7 +124,7 @@ da_carteira |>
 
 A questão inferencial que se coloca é se conseguimos chegar na @eq-seletividade com os dados da @tbl-carteira-observada. Acontece que com os dados observados, não conseguimos estimar @eq-seletividade, no lugar, acabamos estimando a @eq-judicializado.
 
-$$ P(\text{autista} \mid \text{rescindiu} = \text{Sim}, \text{judicializou} = \text{Sim}) > P(\text{autista}) $$ {#eq-judicializado}
+$$ P(\text{autista} \mid \text{rescindiu} = \text{Sim}, \text{judicializou} = \text{Sim}) - P(\text{autista}) > 0 $$ {#eq-judicializado}
 
 A questão inferencial que se põe é se @eq-seletividade equivale a @eq-judicializado. Essa equivalência seria verdadeira se autistas e não-autistas tivessema mesma propensão a judicializar após a rescisão. Entretanto, sabemos que as famílias de autistas são uma população politicamente organizada e, portanto, a expectativa é que eles judicializem mais do que os não-autistas. 
 
@@ -136,7 +136,7 @@ O método que iremos propor para resolver este problema é a diferença em difer
 
 DiD surgiu em 1854 na pesquisa de John Snow sobre a epidemia de cólera em Londres [@cunningham2021]. O método ficou esquecido por muito tempo e entrou no vocabulário da econometria e das ciências políticas em 1994 com o artigo @cardKrueger1994.
 
-O ponto forte do DiD, neste contexto, é que ele controla os chamados efeitos fixos de grupo. No nosso caso isso significaria o seguinte: a alta organização política dos autistas gera um efeito de nível sistemático e persistente nas taxas de judicialização deste grupo. A alta judicialização sistemática dos autistas é o efeito fixo que queremos controlar e, por isso, o DiD se apresenta como um método promissor para o nosso problema. 
+O ponto forte do DiD, para o contexto da presente pesquisa, é que ele controla os chamados "efeitos fixos de grupo". No nosso caso, o "efeito fixo" seria o seguinte: a alta organização política dos autistas gera um efeito de nível sistemático e persistente nas taxas de judicialização deste grupo. Essa "alta judicialização sistemática" por parte dos autistas é exatamente o efeito fixo que queremos controlar e, por isso, o DiD se apresenta como um método promissor para o nosso problema. 
 
 A forma como DiD funciona para o nosso caso é que ele cancela algebricamente o efeito fixo de ser autista. Para entender como isso ocorre, é útil partir de duas comparações intuitivas que, isoladas, não conseguem estimar o efeito causal sem viés, mostrando como o DiD resolve isso. 
 
@@ -176,9 +176,21 @@ O efeito causal estimado seria $\widehat{D} = Y_A^{\text{depois}} - Y_A^{\text{a
 
 em que $\tau$ é o choque temporal (*i.e*, o aumento geral de ações por rescisão que afeta todos os grupos após o Tema 1082). Portanto, $\widehat{D} = \tau + D$. Neste caso, conseguimos controlar pelo efeito fixo de ser autista ($\alpha$) e não-autista ($\nu$), entretanto, essa comparação acrescenta um novo termo de viés, que é o efeito do choque temporal ($\tau$) natural. Esse choque temporal é distinto do choque do Tema 1082 do STJ na rescisão contratual, ele demarca o efeito que teria acontecido naturalmente no tempo, mesmo se não tivesse a decisão do STJ. E a dificuldade é separar este efeito temporal $\tau$ do efeito real que queremos analisar $D$. 
 
-Com isso, percebemos que nenhuma duas comparações isoladas consegue estimar $D$ sem viés, pois ambos estimadores $\widehat{D}$ são enviesados. É neste contexto em que se apresenta o DiD. O DiD é a "diferença das diferenças", ou seja, ele junta as duas diferenças para tentar isolar o efeito $D$. 
+Com isso, percebemos que nenhuma duas comparações isoladas consegue estimar $D$ sem viés, pois ambos estimadores $\widehat{D}$ são enviesados. É neste contexto em que se apresenta o DiD. O DiD é a "diferença das diferenças", ou seja, ele junta as duas comparações que fizemos e consegue, com isso, isolar o efeito $D$. Vejamos como isso ocorre:
 
-Se repetirmos a mesma comparação temporal, mas agora para os não-autistas, o efeito $D$ não aparece. Só restam o efeito fixo $\nu$ e a tendência temporal $\tau$:
+Primeiro, a gente calcula as diferenças temporais dentro de cada grupo. Então a gente calcula a diferença do efeito de autistas antes e depois do Tema 1082; e repete o mesmo procedimento para o efeito de não-autistas antes e depois do Tema 1082. 
+
+Da primeira comparação, sobramos com o seguinte valor: 
+
+| Período                 | Resultado observado              |
+|-------------------------|----------------------------------|
+| Antes (pré-03/05/2024)  | $Y_{A}^{\text{antes}} = \alpha$   |
+| Depois (pós-03/05/2024) | $Y_{A}^{\text{depois}} = \alpha + \tau + D$ |
+
+$$ATT_{A} = Y_{A}^{\text{depois}} - Y_{A}^{\text{antes}} = \alpha + \tau + D - \alpha = \tau + D$$
+
+E da segunda comparação, sobramos com o seguinte valor:
+
 
 | Período                 | Resultado observado              |
 |-------------------------|----------------------------------|
@@ -187,7 +199,9 @@ Se repetirmos a mesma comparação temporal, mas agora para os não-autistas, o 
 
 $$ATT_{NA} = Y_{NA}^{\text{depois}} - Y_{NA}^{\text{antes}} = \nu + \tau - \nu = \tau$$
 
-O efeito fixo $\nu$ se cancela, e ficamos apenas com $\tau$. Juntando os dois resultados:
+A segunda etapa deste método é realizar a "segunda diferença", em que pegamos os resultados parciais de $ATT_{A}$ e de $ATT_{NA}$ e fazemos a diferença interna entre eles. Assim, ficamos com o seguinte:
+
+Dado os seguintes valores: 
 
 $$ATT_A = \tau + D$$
 $$ATT_{NA} = \tau$$
@@ -196,11 +210,16 @@ Para isolar $D$, basta fazer a diferença das diferenças:
 
 $$DiD = ATT_A - ATT_{NA} = (\tau + D) - \tau = D$$
 
-Essa é a ideia central do método: não se começa pela diferença entre grupos, mas pela diferença no tempo dentro de cada grupo. Só depois se faz a diferença dessas diferenças. O DiD usa os não-autistas como grupo de controle para estimar a tendência temporal comum $\tau$ e cancelá-la da estimativa dos autistas, isolando o efeito causal $D$ da seletividade de risco.
+Com isso chegamos na ideia central do método: ao fazermos duas diferenças, sendo que a primeira é a diferença no tempo intra-grupo e a segunda diferença a diferença das diferenças entre grupos, a gente consegue eliminar efeitos fixos. O DiD usa os não-autistas como grupo de controle para estimar a tendência temporal comum $\tau$ e cancelá-la da estimativa dos autistas, isolando o efeito causal $D$ da seletividade de risco.
 
-E isso irá nos forçar a recolocar o problema inferencial como um problema causal. A pergunta causal seria se ser autista causou rescisão contratual por parte da Amil. 
+Explicado o método, precisamos voltar para a conexão com o nosso problema. Lembrando, queremos estimar a @eq-seletividade, mas os nossos dados, se analisados de forma bruta e ingênua, irão nos indicar @eq-judicializado. A resposta. 
+
+A conexão com a @eq-seletividade é a seguinte: para testar a seletividade de risco, o que nos interessa não é a magnitude de $P(\text{autista} \mid \text{rescindiu} = \text{Sim}) - P(\text{autista})$, mas apenas o seu sinal — se é positivo ou não. Sob a hipótese de tendências paralelas, o sinal de $D$ coincide com o sinal de $P(\text{autista} \mid \text{rescindiu} = \text{Sim}) - P(\text{autista})$: $D > 0$ implica que a @eq-seletividade é verdadeira, e $D \leq 0$ implica que não há evidência de seletividade. O DiD é, portanto, um teste válido para a @eq-seletividade. Sem ele, estaríamos avaliando o sinal de $P(\text{autista} \mid \text{rescindiu} = \text{Sim}, \text{judicializou} = \text{Sim}) - P(\text{autista})$ — quantidade cujo sinal está inflado pela maior propensão de autistas a judicializar, tornando o teste não-informativo.
 
 ## Pergunta de Pesquisa
+
+A utilização do DiD translada a nossa pergunta de pesquisa. Originalmente,  forçar a recolocar o problema inferencial como um problema causal. A pergunta causal seria se ser autista causou rescisão contratual por parte da Amil. 
+
 
 A pergunta de pesquisa é de natureza metodológica: **como podemos inferir algo sobre o comportamento de agentes no mundo a partir de dados judiciais, dado que os processos observados não constituem uma amostra aleatória das disputas subjacentes?**
 
