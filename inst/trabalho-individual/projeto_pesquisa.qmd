@@ -1,0 +1,236 @@
+---
+title: "Estendendo métodos para a inferência judicial"
+subtitle: "Usando Diff-in-Diff para análise forense"
+bibliography: referencias.bib
+csl: abnt.csl
+crossref:
+  eq-prefix: "Equação"
+  tbl-prefix: "Tabela"
+  fig-prefix: "Figura"
+format:
+  pdf:
+    documentclass: abntex2
+    classoption:
+      - 12pt
+      - a4paper
+      - oneside
+      - brazil
+    include-in-header:
+      - text: |
+          \usepackage{lmodern}
+          \usepackage{booktabs}
+          \usepackage{longtable}
+          \usepackage{float}
+          \renewcommand{\ABNTEXchapterfont}{\rmfamily}
+          \renewcommand{\ABNTEXsectionfont}{\rmfamily}
+          \renewcommand{\ABNTEXsubsectionfont}{\rmfamily}
+          \renewcommand{\ABNTEXsubsubsectionfont}{\rmfamily}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+flextable::set_flextable_defaults(
+  big.mark     = ".",
+  decimal.mark = ",",
+  font.family  = "Latin Modern Roman"
+)
+```
+
+## Introdução
+
+Este projeto de pesquisa é sobretudo metodológico. O problema teórico-metodológico para o qual desejamos contribuir é como inferir algo sobre o mundo a partir do Judiciário. Há uma concepção comum de que o Judiciário seria uma espécie de espelho dos conflitos sociais. Partindo dessa visão, o trabalho inferencial não seria na verdade um problema teórico, pois o Judiciário seria um mero reflexo da sociedade e, portanto, os litígios encontrados no Judiciário seriam exatamente iguais aos conflitos sociais reais. A depender do que queremos dizer com "reflexo", essa afirmativa não está equivocada. Por exemplo, o racismo na sociedade se reflete nos julgamentos do Judiciário [@adorno1995]. Entretanto, não é neste sentido que usamos a palavra "reflexo". 
+
+Essa noção de reflexo, contudo, merece dois recortes. Primeiro, estamos olhando para essa reflexividade do Judiciário e do mundo apenas para o âmbito cível. Segundo, a nossa definição é quantitativa, e busca dizer que os conflitos do mundo se "refletem" no Judiciário no sentido de que a proporção dos diferentes tipos de conflitos sociais é mantida quando olhamos para os diferentes tipos de litígios. Apenas para fins ilustrativos, mas sendo simplista, se encontrássemos que há 15% de conflitos de acidentes de trânsito no mundo, 20% de conflitos empresariais e 65% de conflitos fundiários, a expectativa seria então encontrarmos essas mesmas proporções de litígios no Judiciário.
+
+O problema dessa visão comum da reflexividade do Judiciário em relação aos conflitos do mundo é que ela não compreende corretamente os vieses que ocorrem no processo de seleção de uma disputa para o litígio. Os estudos que discutem esse tipo de viés estão preocupados com como disputas no mundo real chegam no Judiciário. @felstiner1980 identificam, por exemplo, que só chegam ao Judiciário os conflitos em que os sujeitos que tiveram um direito violado são capazes de nomear a sua violação (_naming_), identificar um responsável (_blaming_) e, por fim, perceber que essa violação é protegida por direito, permitindo-lhe processar alguém (_claiming_). Já @priestKlein1984 identificam que os conflitos que são selecionados para o litígio são aqueles em que há uma dúvida razoável sobre a solução do litígio:
+
+> "It follows from our rational expectations assumptions-that the parties' expectations are independent, unbiased, and on average equal to the true value of Y-that litigated disputes will not constitute a random sample of the underlying population of disputes, **but instead will be concentrated more heavily among disputes with true I's close to the decision standard, Y*.**" (p. 15)^[Tradução livre do autor: Segue-se das nossas premissas sobre as expectativas racionais das partes que uma disputa litigada não será uma amostra aleatória da população de disputas, mas na verdade ela estará concentrada de forma mais forte ao longo de disputas com o Y real próximo do standard decisório Y*.]
+
+Esses vieses dificultam a possibilidade de utilizarmos o Judiciário como forma de análise social. Entretanto, partiremos dessa compreensão do Judiciário, isto é, da ideia de que o Judiciário não reflete adequadamente os conflitos no mundo. E é partindo desta ideia que o nosso problema metodológico se põe: não é porque o Judiciário não reflete adequadamente os conflitos no mundo, que não podemos concluir _nada_ sobre o mundo a partir do Judiciário. O problema ontológico é o que podemos estudar sobre a sociedade a partir do Judiciário; o problema epistemológico é como podemos fazer este estudo; e o problema metodológico é qual método utilizar para isso. Embora haja uma pretensão teórica ambiciosa, este projeto irá focar em apenas uma parte do problema ontológico completo: não pretendemos chegar a respostas sobre _tudo_ o que podemos estudar sobre a sociedade a partir do Judiciário, mas iremos estudar uma parte muito específica.
+
+A parte ontológica do problema que iremos discutir é como usar o Judiciário como indicador em uma análise forense da realidade. A investigação forense busca evidências para resolver casos concretos — o método que discutiremos se aplica a situações específicas, e não a grandes análises sociológicas (vê-se com isso a limitação ontológica do escopo da nossa pesquisa).
+
+Para tornar a discussão concreta, iremos discutir o método com base em um caso. O caso de que iremos tratar é o Tema 1082 do STJ e suas implicações para o setor de saúde suplementar, estudando especificamente a atuação da Amil. O Tema 1082 permitiu que as operadoras de plano de saúde rescindissem unilateralmente planos de saúde coletivos. Várias operadoras fizeram uso dessa possibilidade e começaram a fazer rescisões em massa de alguns contratos. O que aconteceu foi que começaram a surgir denúncias encaminhadas ao Ministério Público de São Paulo de que a operadora Amil estava rescindindo tais planos com seletividade de riscos contra autistas. Judicialmente, isso começou a se expressar por meio de ações individuais das famílias de autistas contra a Amil, solicitando ao Judiciário a manutenção dos contratos coletivos. 
+
+Nesse contexto, problema teórico-metodológico que temos é o seguinte: o problema da seletividade de riscos é um problema que se coloca na carteira de contratos da Amil, mas os dados que estamos observando são os dados do Judiciário. Vamos modelar o problema. 
+
+Imaginemos que a carteira de contratos da Amil possa ser descrita como se fosse uma base de dados com a  estrutura da @tbl-carteira-ideal: 
+
+```{r}
+#| label: tbl-carteira-ideal
+#| tbl-cap: "Estrutura ideal da carteira de contratos da Amil"
+da_carteira <- tibble::tibble(
+  id_contrato  = c("0001", "0002", "0003", "...", "9999"),
+  autista      = c("Sim",  "Não",  "Sim",  "...", "Não"),
+  rescindiu    = c("Sim",  "Sim",  "Não",  "...", "Não"),
+  judicializou = c("Sim",  "Sim",  "Não",  "...", "Não")
+)
+
+da_carteira |>
+  dplyr::select(-judicializou) |>
+  flextable::flextable() |>
+  flextable::set_header_labels(
+    id_contrato = "Contrato",
+    autista     = "Beneficiário\né autista?",
+    rescindiu   = "Amil rescindiu\npós Tema 1082?"
+  ) |>
+  flextable::bold(part = "header") |>
+  flextable::autofit()
+```
+
+Partindo dessa base, a seletividade de riscos seria definida como se a proporção de contratos rescindidos de autistas fosse maior do que a proporção de contratos com autistas na carteira geral, ou seja, haveria seletividade de riscos contra autistas se: 
+
+$$P(\text{autista} \mid \text{rescindiu} = \text{Sim}) > P(\text{autista})$$ {#eq-seletividade}
+
+O problema é que não temos acesso a uma tal base. No lugar, devemos imaginar que a carteira de processos possui uma informação extra: se o contrato foi judicializado ou não, expressa com @tbl-carteira-extensao.  
+
+```{r}
+#| label: tbl-carteira-extensao
+#| tbl-cap: "Extensão da carteira de contratos ideal com indicador de judicialização"
+da_carteira |>
+  flextable::flextable() |>
+  flextable::set_header_labels(
+    id_contrato  = "Contrato",
+    autista      = "Beneficiário\né autista?",
+    rescindiu    = "Amil rescindiu\npós Tema 1082?",
+    judicializou = "Beneficiário\njudicializou?"
+  ) |>
+  flextable::bold(part = "header") |>
+  flextable::autofit()
+```
+
+Dentro dessa perspectiva, a base a que teríamos acesso seria apenas a parte da base em que o beneficiário ajuizou uma ação, ou seja, somente às  linhas destacadas na @tbl-carteira-observada:
+
+```{r}
+#| label: tbl-carteira-observada
+#| tbl-cap: "Contratos observados no Judiciário (linhas destacadas)"
+da_carteira |>
+  flextable::flextable() |>
+  flextable::set_header_labels(
+    id_contrato  = "Contrato",
+    autista      = "Beneficiário\né autista?",
+    rescindiu    = "Amil rescindiu\npós Tema 1082?",
+    judicializou = "Beneficiário\njudicializou?"
+  ) |>
+  flextable::bg(
+    i    = ~ judicializou == "Sim",
+    bg   = "#FFF2CC",
+    part = "body"
+  ) |>
+  flextable::bold(part = "header") |>
+  flextable::autofit()
+```
+
+A questão inferencial que se coloca é se conseguimos chegar na @eq-seletividade com os dados da @tbl-carteira-observada. Acontece que com os dados observados, não conseguimos estimar @eq-seletividade, no lugar, acabamos estimando a @eq-judicializado.
+
+$$ P(\text{autista} \mid \text{rescindiu} = \text{Sim}, \text{judicializou} = \text{Sim}) > P(\text{autista}) $$ {#eq-judicializado}
+
+A questão inferencial que se põe é se @eq-seletividade equivale a @eq-judicializado. Essa equivalência seria verdadeira se autistas e não-autistas tivessema mesma propensão a judicializar após a rescisão. Entretanto, sabemos que as famílias de autistas são uma população politicamente organizada e, portanto, a expectativa é que eles judicializem mais do que os não-autistas. 
+
+Isso significa que a estimação de @eq-judicializado é enviesada: o lado esquerdo da inequação, $P(\text{autista} \mid \text{rescindiu} = \text{Sim}, \text{judicializou} = \text{Sim})$, está inflado em relação ao que se mediria em @eq-seletividade. A consequência é que a inequação tende a ser declarada verdadeira com mais frequência do que seria com dados da carteira completa. Em termos práticos, isso nos levaria a um resultado perigoso em que mesmo que a Amil não esteja causando qualquer seletividade de risco, a maior propensão de autistas a judicializar faria com que encontrássemos proporcionalmente mais autistas nos processos do que na carteira. Com isso, o nosso estimador fica não-informativo, pois se encontrarmos que proporção de casos judicializados por autistas maior do que a proporção de autistas na carteira de contratos, não conseguiríamos dizer se isso ocorreu por causa da alta politização das famílias autistas em questões de saúde, ou se foi de fato por causa de uma seletividade de risco por parte da Amil. Este é o problema concreto com o qual iremos trabalhar. 
+
+O método que iremos propor para resolver este problema é a diferença em diferenças (do inglês, *Differences in Differences*, donde o acrônomo DiD, que utilizaremos doravante). 
+
+### Differences in Differences
+
+DiD surgiu em 1854 na pesquisa de John Snow sobre a epidemia de cólera em Londres [@cunningham2021]. O método ficou esquecido por muito tempo e entrou no vocabulário da econometria e das ciências políticas em 1994 com o artigo @cardKrueger1994.
+
+O ponto forte do DiD, neste contexto, é que ele controla os chamados efeitos fixos de grupo. No nosso caso isso significaria o seguinte: a alta organização política dos autistas gera um efeito de nível sistemático e persistente nas taxas de judicialização deste grupo. A alta judicialização sistemática dos autistas é o efeito fixo que queremos controlar e, por isso, o DiD se apresenta como um método promissor para o nosso problema. 
+
+A forma como DiD funciona para o nosso caso é que ele cancela algebricamente o efeito fixo de ser autista. Para entender como isso ocorre, é útil partir de duas comparações intuitivas que, isoladas, não conseguem estimar o efeito causal sem viés, mostrando como o DiD resolve isso. 
+
+A primeira comparação intuitiva seria comparar, após o Tema 1082, o volume de ações ajuizadas por autistas e por não-autistas:
+
+| Grupo             | Resultado observado |
+|-------------------|---------------------|
+| Autistas (A)      | $Y_A$               |
+| Não-autistas (NA) | $Y_{NA}$            |
+
+O efeito causal estimado seria $\widehat{D} = Y_A - Y_{NA}$. O problema é que esses resultados podem ser decompostos da seguinte maneira:
+
+| Grupo             | Resultado observado |
+|-------------------|---------------------|
+| Autistas (A)      | $Y_A = \alpha + D$  |
+| Não-autistas (NA) | $Y_{NA} = \nu$      |
+
+Em que $\alpha$ é o efeito fixo de autistas, $\nu$ é o efeito fixo de não-autistas e $D$ é o efeito causal da seletividade de risco. A diferença observada fica então como: 
+
+$$\widehat{D} = Y_A - Y_{NA} = \alpha + D - \nu$$
+
+Quando destrinchamos o estimador desta forma, percebemos que o efeito fixo dos autistas enviesa o estimador, porque não conseguimos separar o efeito real ($D$) do diferencial de propensão a litigar $\alpha - \nu$. Idealmente, gostaríamos que $\widehat{D} = Y_A - Y_{NA} = D$, mas não é isso que observamos. 
+
+Se a primeira comparação não funciona, podemos ir para uma segunda comparação intuitiva. No caso, poderíamos fixar o grupo e comparar o volume de ações de autistas antes e depois da política da Amil. Isso geraria os seguintes resultados:
+
+| Período                 | Resultado observado     |
+|-------------------------|-------------------------|
+| Antes (pré-03/05/2024)  | $Y_A^{\text{antes}}$   |
+| Depois (pós-03/05/2024) | $Y_A^{\text{depois}}$  |
+
+O efeito causal estimado seria $\widehat{D} = Y_A^{\text{depois}} - Y_A^{\text{antes}}$. Mas os resultados se decompõem em:
+
+| Período | Resultado observado                          |
+|---------|----------------------------------------------|
+| Antes   | $Y_A^{\text{antes}} = \alpha$                |
+| Depois  | $Y_A^{\text{depois}} = \alpha + \tau + D$    |
+
+em que $\tau$ é o choque temporal (*i.e*, o aumento geral de ações por rescisão que afeta todos os grupos após o Tema 1082). Portanto, $\widehat{D} = \tau + D$. Neste caso, conseguimos controlar pelo efeito fixo de ser autista ($\alpha$) e não-autista ($\nu$), entretanto, essa comparação acrescenta um novo termo de viés, que é o efeito do choque temporal ($\tau$) natural. Esse choque temporal é distinto do choque do Tema 1082 do STJ na rescisão contratual, ele demarca o efeito que teria acontecido naturalmente no tempo, mesmo se não tivesse a decisão do STJ. E a dificuldade é separar este efeito temporal $\tau$ do efeito real que queremos analisar $D$. 
+
+Com isso, percebemos que nenhuma duas comparações isoladas consegue estimar $D$ sem viés, pois ambos estimadores $\widehat{D}$ são enviesados. É neste contexto em que se apresenta o DiD. O DiD é a "diferença das diferenças", ou seja, ele junta as duas diferenças para tentar isolar o efeito $D$. 
+
+Se repetirmos a mesma comparação temporal, mas agora para os não-autistas, o efeito $D$ não aparece. Só restam o efeito fixo $\nu$ e a tendência temporal $\tau$:
+
+| Período                 | Resultado observado              |
+|-------------------------|----------------------------------|
+| Antes (pré-03/05/2024)  | $Y_{NA}^{\text{antes}} = \nu$   |
+| Depois (pós-03/05/2024) | $Y_{NA}^{\text{depois}} = \nu + \tau$ |
+
+$$ATT_{NA} = Y_{NA}^{\text{depois}} - Y_{NA}^{\text{antes}} = \nu + \tau - \nu = \tau$$
+
+O efeito fixo $\nu$ se cancela, e ficamos apenas com $\tau$. Juntando os dois resultados:
+
+$$ATT_A = \tau + D$$
+$$ATT_{NA} = \tau$$
+
+Para isolar $D$, basta fazer a diferença das diferenças:
+
+$$DiD = ATT_A - ATT_{NA} = (\tau + D) - \tau = D$$
+
+Essa é a ideia central do método: não se começa pela diferença entre grupos, mas pela diferença no tempo dentro de cada grupo. Só depois se faz a diferença dessas diferenças. O DiD usa os não-autistas como grupo de controle para estimar a tendência temporal comum $\tau$ e cancelá-la da estimativa dos autistas, isolando o efeito causal $D$ da seletividade de risco.
+
+E isso irá nos forçar a recolocar o problema inferencial como um problema causal. A pergunta causal seria se ser autista causou rescisão contratual por parte da Amil. 
+
+## Pergunta de Pesquisa
+
+A pergunta de pesquisa é de natureza metodológica: **como podemos inferir algo sobre o comportamento de agentes no mundo a partir de dados judiciais, dado que os processos observados não constituem uma amostra aleatória das disputas subjacentes?**
+
+## Objetivos
+
+### Objetivo geral
+
+Propor e demonstrar uma estratégia de identificação capaz de recuperar inferências substantivas sobre comportamentos extraprocessuais a partir de dados judiciais parcialmente observados.
+
+### Objetivos específicos
+
+1. Mostrar como podemos importar métodos desenvolvidos em outras ciências para resolver problemas forenses. 
+2. Aplicar a estratégia ao caso da Amil para testar empiricamente a hipótese de seletividade de risco contra beneficiários autistas.
+
+## Justificativa
+
+Há duas justificativs para esse tipo de pesquisa. A primeira é de ordem teórica, a outra de ordem prática. 
+
+Do ponto de vista teórico, há muitas análises sociológicas que se baseiam na análise do Judiciário
+
+## Referencial Teórico
+
+## Metodologia
+
+## Dados
+
+## Análise Preliminar
+
+## Contribuição Esperada
+
+## Cronograma
+
+## Referências 
