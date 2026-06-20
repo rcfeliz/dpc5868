@@ -1,6 +1,9 @@
 ---
-title: "Estendendo métodos para a inferência judicial"
-subtitle: "Usando Diff-in-Diff para análise forense"
+title: "Diferenças em Diferenças como estratégia de inferência forense"
+subtitle: "Um estudo de caso sobre seletividade de risco da Amil contra beneficiários autistas"
+author: Ricardo Feliz Okamoto
+date: last-modified
+date-format: "DD/MM/YYYY"
 bibliography: referencias.bib
 csl: abnt.csl
 crossref:
@@ -21,6 +24,7 @@ format:
           \usepackage{booktabs}
           \usepackage{longtable}
           \usepackage{float}
+          \renewcommand{\emph}[1]{\textit{#1}}
           \renewcommand{\ABNTEXchapterfont}{\rmfamily}
           \renewcommand{\ABNTEXsectionfont}{\rmfamily}
           \renewcommand{\ABNTEXsubsectionfont}{\rmfamily}
@@ -49,13 +53,15 @@ O problema dessa visão comum da reflexividade do Judiciário em relação aos c
 
 Esses vieses dificultam a possibilidade de utilizarmos o Judiciário como forma de análise social. Entretanto, partiremos dessa compreensão do Judiciário, isto é, da ideia de que o Judiciário não reflete adequadamente os conflitos no mundo. E é partindo desta ideia que o nosso problema metodológico se põe: não é porque o Judiciário não reflete adequadamente os conflitos no mundo, que não podemos concluir _nada_ sobre o mundo a partir do Judiciário. O problema ontológico é o que podemos estudar sobre a sociedade a partir do Judiciário; o problema epistemológico é como podemos fazer este estudo; e o problema metodológico é qual método utilizar para isso. Embora haja uma pretensão teórica ambiciosa, este projeto irá focar em apenas uma parte do problema ontológico completo: não pretendemos chegar a respostas sobre _tudo_ o que podemos estudar sobre a sociedade a partir do Judiciário, mas iremos estudar uma parte muito específica.
 
-A parte ontológica do problema que iremos discutir é como usar o Judiciário como indicador em uma análise forense da realidade. A investigação forense busca evidências para resolver casos concretos — o método que discutiremos se aplica a situações específicas, e não a grandes análises sociológicas (vê-se com isso a limitação ontológica do escopo da nossa pesquisa).
+A parte ontológica do problema que iremos discutir é como usar o Judiciário como evidência em uma análise forense da realidade. Essa investigação forense busca evidências para resolver casos concretos. Isso vai implicar para o nosso método que iremos usar um método de identificação de um efeito em situações específicas, e não um método que busca criar grandes análises sociológicas (vê-se com isso a limitação ontológica do escopo da nossa pesquisa).
 
-Para tornar a discussão concreta, iremos discutir o método com base em um caso. O caso de que iremos tratar é o Tema 1082 do STJ e suas implicações para o setor de saúde suplementar, estudando especificamente a atuação da Amil. O Tema 1082 permitiu que as operadoras de plano de saúde rescindissem unilateralmente planos de saúde coletivos. Várias operadoras fizeram uso dessa possibilidade e começaram a fazer rescisões em massa de alguns contratos. O que aconteceu foi que começaram a surgir denúncias encaminhadas ao Ministério Público de São Paulo de que a operadora Amil estava rescindindo tais planos com seletividade de riscos contra autistas. Judicialmente, isso começou a se expressar por meio de ações individuais das famílias de autistas contra a Amil, solicitando ao Judiciário a manutenção dos contratos coletivos. 
+A fim de tornar a discussão concreta, iremos discutir o método com base em um caso. O caso de que iremos tratar é o Tema 1082 do STJ e suas implicações para o setor de saúde suplementar, estudando especificamente a atuação da Amil. O Tema 1082 permitiu que as operadoras de plano de saúde rescindissem unilateralmente planos de saúde coletivos. Várias operadoras fizeram uso dessa possibilidade e começaram a fazer rescisões em massa de alguns contratos. O que aconteceu foi que começaram a surgir denúncias encaminhadas ao Ministério Público de São Paulo de que a operadora Amil estava rescindindo tais planos com seletividade de riscos contra autistas. Judicialmente, isso começou a se expressar por meio de ações individuais das famílias de autistas contra a Amil, solicitando ao Judiciário a manutenção dos contratos coletivos. 
 
-Nesse contexto, problema teórico-metodológico que temos é o seguinte: o problema da seletividade de riscos é um problema que se coloca na carteira de contratos da Amil, mas os dados que estamos observando são os dados do Judiciário. Vamos modelar o problema. 
+Nesse contexto, o problema teórico-metodológico que temos é o seguinte: o problema da seletividade de riscos é um problema que se coloca na carteira de contratos da Amil, mas os dados que estamos observando são os dados do Judiciário. Vamos formalizar o problema. 
 
-Imaginemos que a carteira de contratos da Amil possa ser descrita como se fosse uma base de dados com a  estrutura da @tbl-carteira-ideal: 
+### Formalização do problema
+
+Imaginemos que a carteira de contratos da Amil possa ser descrita como se fosse uma base de dados com a estrutura da @tbl-carteira-ideal, em que cada unidade de observação (linha) da base é um contrato e cada coluna é uma informação sobre este contrato. No caso, temos 2 informações relevantes sobre cada contrato (ou seja, duas colunas relevantes): o perfil do beneficiário (mais especificamente, se ele é autista ou não) e se a operadora do plano rescindiu o plano após o Tema 1082 do STJ.  
 
 ```{r}
 #| label: tbl-carteira-ideal
@@ -79,11 +85,11 @@ da_carteira |>
   flextable::autofit()
 ```
 
-Partindo dessa base, a seletividade de riscos seria definida como se a proporção de contratos rescindidos de autistas fosse maior do que a proporção de contratos com autistas na carteira geral, ou seja, haveria seletividade de riscos contra autistas se: 
+Partindo dessa base, a seletividade de riscos é definida como um valor positivo para a seguinte diferença: a proporção de contratos rescindidos de autistas menos a proporção de contratos com autistas na carteira geral. Se este valor for positivo, então haverá seletividade de riscos contra autistas. 
 
 $$P(\text{autista} \mid \text{rescindiu} = \text{Sim}) - P(\text{autista}) > 0$$ {#eq-seletividade}
 
-O problema é que não temos acesso a uma tal base. No lugar, devemos imaginar que a carteira de processos possui uma informação extra: se o contrato foi judicializado ou não, expressa com @tbl-carteira-extensao.  
+O problema é que não temos acesso a uma tal base, pois ela é segredo de negócio da operadora de plano de saúde, de forma que este estimando é um valor não-observado para nós. Para entendermos os dados a que temos acesso e, portanto, o estimador que podemos usar, devemos imaginar que a carteira de contratos da operadora possui uma informação extra, ou seja, precisamos imaginar uma terceira coluna desta base dados, que é se o contrato foi judicializado ou não. Essa base estendida está representada na @tbl-carteira-extensao.  
 
 ```{r}
 #| label: tbl-carteira-extensao
@@ -100,7 +106,7 @@ da_carteira |>
   flextable::autofit()
 ```
 
-Dentro dessa perspectiva, a base a que teríamos acesso seria apenas a parte da base em que o beneficiário ajuizou uma ação, ou seja, somente às  linhas destacadas na @tbl-carteira-observada:
+A base da @tbl-carteira-extensao ainda não representa os dados observados. Como os dados que conseguimos obter são os dados que estão no Judiciário, pois tais dados são públicos, então a base a que temos acesso é apenas a parte da base em que o beneficiário ajuizou uma ação, ou seja, conseguimos reconstruir apenas as linhas destacadas na @tbl-carteira-observada.
 
 ```{r}
 #| label: tbl-carteira-observada
@@ -126,15 +132,15 @@ A questão inferencial que se coloca é se conseguimos chegar na @eq-seletividad
 
 $$ P(\text{autista} \mid \text{rescindiu} = \text{Sim}, \text{judicializou} = \text{Sim}) - P(\text{autista}) > 0 $$ {#eq-judicializado}
 
-A questão inferencial que se põe é se @eq-seletividade equivale a @eq-judicializado. Essa equivalência seria verdadeira se autistas e não-autistas tivessema mesma propensão a judicializar após a rescisão. Entretanto, sabemos que as famílias de autistas são uma população politicamente organizada e, portanto, a expectativa é que eles judicializem mais do que os não-autistas. 
+Então, recolocando o problema da questão inferencial, o nosso problema é se @eq-seletividade equivale a @eq-judicializado. Essa equivalência seria verdadeira se autistas e não-autistas tivessema mesma propensão a judicializar após a rescisão. 
 
-Isso significa que a estimação de @eq-judicializado é enviesada: o lado esquerdo da inequação, $P(\text{autista} \mid \text{rescindiu} = \text{Sim}, \text{judicializou} = \text{Sim})$, está inflado em relação ao que se mediria em @eq-seletividade. A consequência é que a inequação tende a ser declarada verdadeira com mais frequência do que seria com dados da carteira completa. Em termos práticos, isso nos levaria a um resultado perigoso em que mesmo que a Amil não esteja causando qualquer seletividade de risco, a maior propensão de autistas a judicializar faria com que encontrássemos proporcionalmente mais autistas nos processos do que na carteira. Com isso, o nosso estimador fica não-informativo, pois se encontrarmos que proporção de casos judicializados por autistas maior do que a proporção de autistas na carteira de contratos, não conseguiríamos dizer se isso ocorreu por causa da alta politização das famílias autistas em questões de saúde, ou se foi de fato por causa de uma seletividade de risco por parte da Amil. Este é o problema concreto com o qual iremos trabalhar. 
+O problema, entretanto, logo aparece. Sabemos que as famílias de autistas são uma população politicamente organizada e, portanto, a expectativa é que eles judicializem mais do que os não-autistas. Isso significa que a estimação de @eq-judicializado é enviesada: o lado esquerdo da inequação, $P(\text{autista} \mid \text{rescindiu} = \text{Sim}, \text{judicializou} = \text{Sim})$, está inflado em relação ao que se mediria em @eq-seletividade. A consequência é que a inequação tende a ser declarada verdadeira com mais frequência do que seria com dados da carteira completa. Em termos práticos, isso nos levaria a um resultado perigoso em que mesmo que a Amil não esteja causando qualquer seletividade de risco, a maior propensão de autistas a judicializar faria com que encontrássemos proporcionalmente mais autistas nos processos do que na carteira. Com isso, o nosso estimador fica não-informativo, pois se encontrarmos que proporção de casos judicializados por autistas maior do que a proporção de autistas na carteira de contratos, não conseguiríamos dizer se isso ocorreu por causa da alta politização das famílias autistas em questões de saúde, ou se foi de fato por causa de uma seletividade de risco por parte da Amil. Este é o problema concreto com o qual iremos trabalhar. 
 
-O método que iremos propor para resolver este problema é a diferença em diferenças (do inglês, *Differences in Differences*, donde o acrônomo DiD, que utilizaremos doravante). 
+O método que iremos propor para resolver este problema é a diferença em diferenças (do inglês, *Differences in Differences* (DiD), donde o acrônomo DiD, que utilizaremos doravante). 
 
-### Differences in Differences
+### A estratégia de estimação: *Differences in Differences* (DiD)
 
-DiD surgiu em 1854 na pesquisa de John Snow sobre a epidemia de cólera em Londres [@cunningham2021]. O método ficou esquecido por muito tempo e entrou no vocabulário da econometria e das ciências políticas em 1994 com o artigo @cardKrueger1994.
+DiD surgiu em 1854 na pesquisa de John Snow sobre a epidemia de cólera em Londres [@cunningham2021; @freedman1991]. O método ficou esquecido por muito tempo e entrou no vocabulário da econometria e das ciências políticas em 1994 com o artigo @cardKrueger1994 [ver também @cunningham2021; @hernan2025].
 
 O ponto forte do DiD, para o contexto da presente pesquisa, é que ele controla os chamados "efeitos fixos de grupo". No nosso caso, o "efeito fixo" seria o seguinte: a alta organização política dos autistas gera um efeito de nível sistemático e persistente nas taxas de judicialização deste grupo. Essa "alta judicialização sistemática" por parte dos autistas é exatamente o efeito fixo que queremos controlar e, por isso, o DiD se apresenta como um método promissor para o nosso problema. 
 
@@ -199,14 +205,12 @@ E da segunda comparação, sobramos com o seguinte valor:
 
 $$ATT_{NA} = Y_{NA}^{\text{depois}} - Y_{NA}^{\text{antes}} = \nu + \tau - \nu = \tau$$
 
-A segunda etapa deste método é realizar a "segunda diferença", em que pegamos os resultados parciais de $ATT_{A}$ e de $ATT_{NA}$ e fazemos a diferença interna entre eles. Assim, ficamos com o seguinte:
-
-Dado os seguintes valores: 
+A segunda etapa deste método é realizar a "segunda diferença", em que pegamos os resultados parciais de $ATT_{A}$ e de $ATT_{NA}$ e fazemos a diferença interna entre eles. Então com os seguintes valores parciais:
 
 $$ATT_A = \tau + D$$
 $$ATT_{NA} = \tau$$
 
-Para isolar $D$, basta fazer a diferença das diferenças:
+Conseguioms isolar $D$, fazendo simplesmente a diferença entre estes doiss valores. 
 
 $$DiD = ATT_A - ATT_{NA} = (\tau + D) - \tau = D$$
 
@@ -214,42 +218,61 @@ Com isso chegamos na ideia central do método: ao fazermos duas diferenças, sen
 
 Explicado o método, precisamos voltar para a conexão com o nosso problema. Lembrando, queremos estimar a @eq-seletividade, mas os nossos dados, se analisados de forma bruta e ingênua, irão nos indicar @eq-judicializado. A resposta. 
 
-A conexão com a @eq-seletividade é a seguinte: para testar a seletividade de risco, o que nos interessa não é a magnitude de $P(\text{autista} \mid \text{rescindiu} = \text{Sim}) - P(\text{autista})$, mas apenas o seu sinal — se é positivo ou não. Sob a hipótese de tendências paralelas, o sinal de $D$ coincide com o sinal de $P(\text{autista} \mid \text{rescindiu} = \text{Sim}) - P(\text{autista})$: $D > 0$ implica que a @eq-seletividade é verdadeira, e $D \leq 0$ implica que não há evidência de seletividade. O DiD é, portanto, um teste válido para a @eq-seletividade. Sem ele, estaríamos avaliando o sinal de $P(\text{autista} \mid \text{rescindiu} = \text{Sim}, \text{judicializou} = \text{Sim}) - P(\text{autista})$ — quantidade cujo sinal está inflado pela maior propensão de autistas a judicializar, tornando o teste não-informativo.
+A conexão com a @eq-seletividade é a seguinte: para testar a seletividade de risco, o que nos interessa não é a magnitude de $P(\text{autista} \mid \text{rescindiu} = \text{Sim}) - P(\text{autista})$, mas apenas o seu sinal (positivo ou negativo) e sua significância estatística (se é diferente de zero ou não). Sob a hipótese de tendências paralelas, o sinal de $D$ coincide com o sinal de $P(\text{autista} \mid \text{rescindiu} = \text{Sim}) - P(\text{autista})$, de forma que $D > 0$ implica que $P(\text{autista} \mid \text{rescindiu} = \text{Sim}) - P(\text{autista}) > 0$. Ou seja, se encontrarmos $D > 0$, então a seletividade de risco será verdadeira, e se encontrarmos $D \leq 0$ entõa não teremos evidência de seletividade. O DiD é, portanto, um teste válido para a @eq-seletividade. 
 
 ## Pergunta de Pesquisa
 
-A utilização do DiD translada a nossa pergunta de pesquisa. Originalmente,  forçar a recolocar o problema inferencial como um problema causal. A pergunta causal seria se ser autista causou rescisão contratual por parte da Amil. 
+A pergunta de pesquisa que iremos defrontar é: **A Amil exerceu seletividade de risco contra beneficiários autistas após o Tema 1082 do STJ?**
 
-
-A pergunta de pesquisa é de natureza metodológica: **como podemos inferir algo sobre o comportamento de agentes no mundo a partir de dados judiciais, dado que os processos observados não constituem uma amostra aleatória das disputas subjacentes?**
+Responder essa pergunta exige enfrentar um problema de inferência: os dados disponíveis são os processos judiciais ajuizados contra a Amil, que constituem uma amostra não-aleatória dos contratos rescindidos. Famílias de autistas judicializam mais do que não-autistas, de modo que qualquer comparação direta entre os grupos nos dados judiciais estará contaminada por esse diferencial de propensão a litigar. A contribuição metodológica deste artigo é mostrar que o DiD resolve esse problema: sob a hipótese de tendências paralelas, o estimador DiD produz um teste válido para a hipótese de seletividade de risco a partir dos dados judiciais disponíveis.
 
 ## Objetivos
 
 ### Objetivo geral
 
-Propor e demonstrar uma estratégia de identificação capaz de recuperar inferências substantivas sobre comportamentos extraprocessuais a partir de dados judiciais parcialmente observados.
+Testar empiricamente a hipótese de seletividade de risco da Amil contra beneficiários autistas pós-Tema 1082, propondo o DiD como estratégia de identificação que corrige o viés de seleção para o litígio.
 
 ### Objetivos específicos
 
-1. Mostrar como podemos importar métodos desenvolvidos em outras ciências para resolver problemas forenses. 
-2. Aplicar a estratégia ao caso da Amil para testar empiricamente a hipótese de seletividade de risco contra beneficiários autistas.
+1. Formalizar o problema de seleção para o litígio e demonstrar por que ele impede a inferência direta a partir dos dados judiciais.
+2. Demonstrar como o DiD corrige esse viés sob a hipótese de tendências paralelas, tornando válido o teste da @eq-seletividade a partir de uma alternativa à @eq-judicializado.
+3. Estimar o DiD com os dados de processos ajuizados contra a Amil no TJSP e avaliar se $D > 0$.
 
 ## Justificativa
 
-Há duas justificativs para esse tipo de pesquisa. A primeira é de ordem teórica, a outra de ordem prática. 
+Há duas justificativas para esta pesquisa, uma de ordem teórica e outra de ordem prática.
 
-Do ponto de vista teórico, há muitas análises sociológicas que se baseiam na análise do Judiciário
+Do ponto de vista teórico, análises empíricas do Direito frequentemente utilizam dados judiciais como se fossem uma amostra representativa dos conflitos sociais subjacentes. A literatura sobre seleção de disputas [@felstiner1980; @priestKlein1984] já documentou por que essa premissa é falsa, mas a resposta metodológica a esse problema permanece subdesenvolvida. Então, se hoje, de um lado, sabemos que os dados do Judiciário são enviesados em relação ao mundo, por outro lado não sabemos enviesado como fazer inferênecias válidas sobre o mundo a partir do Judiciário. Esta pesquisa propõe uma resposta concreta para uma classe específica de problemas forenses (problemas cujo problema inferencial decorre de um viés de seleção com estrutura de efeito fixo de grupo), mostrando que o DiD é uma estratégia de identificação adequada neste caso.
 
-## Referencial Teórico
+Do ponto de vista prático, o caso da Amil envolve uma população vulnerável e uma acusação grave de discriminação por seletividade de risco. As denúncias encaminhadas ao Ministério Público de São Paulo carecem de evidência causal rigorosa, pois os dados disponíveis são exatamente os dados judiciais enviesados descritos nesta pesquisa. Uma metodologia que permita extrair inferências válidas desses dados tem, portanto, relevância jurídica e regulatória direta.
 
 ## Metodologia
 
-## Dados
+### Dados
 
-## Análise Preliminar
+Os dados utilizados são processos judiciais ajuizados no Tribunal de Justiça de São Paulo (TJSP) contra a Amil por rescisão unilateral de planos de saúde coletivos. A base contém 1.580 processos distribuídos entre fevereiro de 2023 e maio de 2024. Cada processo possui data de distribuição (`dt_dist`) e um indicador de se o autor é beneficiário autista (`autista`). Os dados foram coletados diretamente do sistema de consulta processual do TJSP.
 
-## Contribuição Esperada
+### Estratégia de Identificação
 
-## Cronograma
+A estratégia de identificação é o DiD. A unidade de análise é o par dia × grupo, em que grupo indica se os processos daquele dia foram ajuizados por autistas ou por não-autistas. O evento de tratamento é a data da decisão do STJ no Tema 1082. 
 
-## Referências 
+A hipótese de identificação é a de **tendências paralelas**: na ausência de seletividade de risco, autistas e não-autistas teriam a mesma taxa de crescimento nas ações após 03/05/2024. 
+
+### Especificação do Modelo
+
+O modelo estimado é uma regressão de Poisson com a seguinte especificação [@baker2026]:
+
+$$\log(\text{count}_{it}) = \alpha + \beta_1 \cdot \text{autista}_i + \beta_2 \cdot \text{post}_t + \delta \cdot (\text{autista}_i \times \text{post}_t)$$ {#eq-modelo}
+
+em que $\text{count}_{it}$ é o número de novas ações distribuídas no dia $t$ para o grupo $i$; $\text{autista}_i$ é o indicador de grupo; $\text{post}_t$ é o indicador de período pós-03/05/2024; e $\delta$ é o estimador DiD (que é o nosso parâmetro de interesse).
+
+As hipóteses testadas são:
+
+- $H_0$: $\delta = 0$ — não há seletividade de risco
+- $H_1$: $\delta > 0$ — há seletividade de risco contra autistas
+
+### Testes de Robustez
+
+Para verificar a plausibilidade da hipótese de tendências paralelas, será realizada uma análise visual da evolução das séries temporais de autistas e não-autistas no período pré-tratamento. Adicionalmente, será estimado um teste de placebo: replicar a especificação da @eq-modelo com uma data de corte artificial no pré-período, esperando que $\delta$ não seja distinguível de zero. A análise de sensibilidade seguirá a abordagem de @rambachan2023 e @freyaldenhoven2019, que propõe relaxar a hipótese de tendências paralelas de forma controlada para avaliar o quanto os resultados dependem dessa suposição.
+
+## Referências
